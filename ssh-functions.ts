@@ -28,7 +28,7 @@ export class SshFunctions {
     async connect(): Promise<IResponse<NodeSSH>> {
         let response: IResponse<NodeSSH> = {
             status: false,
-            data: undefined,
+            data: {} as NodeSSH,
             message: ''
         };
         if (!this.isValidConfig()) {
@@ -45,6 +45,7 @@ export class SshFunctions {
                     this.generic.printOutputChannel("Connected on IP: " + this.config.host, false);
                 }
             }).catch(reason => {
+                response.status = false;
                 response.message = reason;
             });
         } else {

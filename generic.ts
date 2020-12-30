@@ -1,3 +1,4 @@
+import { Terminal } from './terminal';
 import { IStringReplace, IRegVsCmd } from './interface/generic';
 import { NotifyEnum, PlatformTypeEnum } from './enum/generic';
 import * as vscode from 'vscode';
@@ -130,6 +131,12 @@ export class Generic {
         statusbar.show();
     }
 
+    /*export function showQuickPick(items: string[] | Thenable<string[]>, options: QuickPickOptions & { canPickMany: true; }, token?: CancellationToken): Thenable<string[] | undefined>;
+    export function showQuickPick(items: string[] | Thenable<string[]>, options?: QuickPickOptions, token?: CancellationToken): Thenable<string | undefined>;
+    export function showQuickPick<T extends QuickPickItem>(items: T[] | Thenable<T[]>, options: QuickPickOptions & { canPickMany: true; }, token?: CancellationToken): Thenable<T[] | undefined>;
+    export function showQuickPick<T extends QuickPickItem>(items: T[] | Thenable<T[]>, options?: QuickPickOptions, token?: CancellationToken): Thenable<T | undefined>;
+    */
+
     createQuickPick(items: vscode.QuickPickItem[], options: vscode.QuickPickOptions): Thenable<vscode.QuickPickItem[] | vscode.QuickPickItem | undefined> {
         return vscode.window.showQuickPick<vscode.QuickPickItem>(items, options);
     }
@@ -235,8 +242,8 @@ export class Generic {
 
     /**============================================
      *  GET_PLATFORM
-     *  EXEC_ON_TERMINAL
-     *  EXEC_SHELL_CMD
+     *  REMOVE_DUPLICATES_VALUES
+     *  INSTALL_UNINSTALL_EXTENSIONS
      *=============================================**/
     getPlatform(): PlatformTypeEnum | undefined {
         switch (process.platform) {
@@ -268,7 +275,12 @@ export class Generic {
         }
         return array;
     }
+
+    installUninstallExtensions(extensionsId: string, terminal: Terminal, isUninstall?: boolean) {
+        let commandExt = (isUninstall) ? 'code --uninstall-extension {0}' : 'code --install-extension {0}';
+        const stringsReplace: IStringReplace[] = [{ search: '{0}', toReplace: extensionsId }];
+        const cmd = this.stringReplaceAll(commandExt, stringsReplace);
+        terminal.exec(cmd);
+    }
     /*=============== END OF SECTION ==============*/
-
-
 }

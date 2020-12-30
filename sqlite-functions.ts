@@ -6,14 +6,11 @@ import { Generic } from './generic';
 export class SqliteFunctions {
     private db: Database<sqlite3.Database, sqlite3.Statement> | undefined;
 
-    constructor(
-        private generic: Generic
-    ) {
-    }
+    constructor() { }
 
     private _file: string = '';
     set file(name: string) {
-        if (name && name.length > 0 && this.generic.fileExist(name) && name !== this._file) {
+        if (name && name.length > 0 && name !== this._file) {
             this.endConnection();
             this._file = name;
         }
@@ -25,8 +22,8 @@ export class SqliteFunctions {
     async open(): Promise<IResponse<Database<sqlite3.Database, sqlite3.Statement>>> {
         let response: IResponse<Database<sqlite3.Database, sqlite3.Statement>> = {
             status: false,
-            data: undefined,
-            message: ''
+            message: '',
+            data: {} as Database<sqlite3.Database, sqlite3.Statement>
         };
 
         if (this._file.length > 0) {
@@ -38,11 +35,8 @@ export class SqliteFunctions {
                     this.db = value;
                     response.data = this.db;
                 }).catch(reason => {
-                    response = {
-                        status: false,
-                        data: undefined,
-                        message: reason
-                    };
+                    response.status = false;
+                    response.message = reason;
                 });
             } else {
                 response.data = this.db;

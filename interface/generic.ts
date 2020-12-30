@@ -9,6 +9,6 @@ export interface IRegVsCmd {
 }
 export interface IResponse<T> {
     status: boolean,
-    message?: string,
-    data?: T
+    data: T,
+    message: string
 }
