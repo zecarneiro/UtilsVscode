@@ -33,6 +33,7 @@ export class SqliteFunctions {
                     driver: sqlite3.Database
                 }).then(value => {
                     this.db = value;
+                    response.status = true;
                     response.data = this.db;
                 }).catch(reason => {
                     response.status = false;
