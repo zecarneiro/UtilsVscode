@@ -1,4 +1,7 @@
+import { ShellType } from './enum/terminal';
 import * as vscode from 'vscode';
+import * as child_process from 'child_process';
+import { Generic } from './generic';
 
 export class Terminal {
     private terminal: vscode.Terminal | any;
@@ -6,19 +9,12 @@ export class Terminal {
 
     constructor(
         private appName: string,
+        private generic: Generic
     ) {
         vscode.window.onDidCloseTerminal(term => {
             this.terminal = undefined;
         });
         this.createTerminal();
-
-        // Set Shell Command
-        switch (process.platform) {
-            case 'linux':
-                this.shellCmd = 'bash -c \"{0}\"';
-            case 'win32':
-                this.shellCmd = 'powershell -command \"{0}\"';
-        }
     }
 
     private createTerminal() {
@@ -31,8 +27,23 @@ export class Terminal {
         if (command && command.length > 0) {
             this.createTerminal();
             this.terminal.show(true);
-            command = this.shellCmd.replace('{0}', command);
             this.terminal.sendText(command);
+        }
+    }
+
+    execOnOutputChanel(command: string, cwd: string | undefined, typeShell: ShellType) {
+        command = typeShell.replace('{0}', command);
+        this.generic.printOutputChannel("EXEC: " + command, false);
+
+        let cmd = child_process.spawnSync(command, { cwd: cwd, encoding: 'utf8', shell: true });
+        if (cmd.stdout) {
+            this.generic.printOutputChannel(cmd.stdout, true, "STDOUT");
+        }
+        if (cmd.stderr) {
+            this.generic.printOutputChannel(cmd.stderr, true, "STDERR");
+        }
+        if (cmd.status !== 0) {
+            this.generic.printOutputChannel(cmd.status, true, "EXIT CODE");
         }
     }
 
