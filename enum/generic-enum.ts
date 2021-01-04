@@ -5,7 +5,8 @@ export enum NotifyEnum {
 }
 export enum PlatformTypeEnum {
     windows,
-    linux
+    linux,
+    osx
 }
 export enum MsgEnum {
     invalidPlatform = "Invalid Platform"

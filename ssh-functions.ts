@@ -1,6 +1,6 @@
-import { IResponse } from './interface/generic';
+import { IResponse } from './interface/generic-interface';
 import { Config, NodeSSH, SSHExecCommandOptions } from 'node-ssh';
-import { SshFunctionsMsgEnum } from './enum/ssh-functions';
+import { SshFunctionsMsgEnum } from './enum/ssh-functions-enum';
 import { Generic } from './generic';
 
 export class SshFunctions {
@@ -27,12 +27,11 @@ export class SshFunctions {
 
     async connect(): Promise<IResponse<NodeSSH>> {
         let response: IResponse<NodeSSH> = {
-            status: false,
             data: {} as NodeSSH,
-            message: ''
+            error: undefined
         };
         if (!this.isValidConfig()) {
-            response.message = SshFunctionsMsgEnum.msgInvalidConfig;
+            response.error = Error(SshFunctionsMsgEnum.msgInvalidConfig);
             return response;
         }
 
@@ -40,16 +39,14 @@ export class SshFunctions {
             await this.nodessh.connect(this.config).then(value => {
                 if (value.isConnected()) {
                     this.nodessh = value;
-                    response.status = true;
                     response.data = this.nodessh;
-                    this.generic.printOutputChannel("Connected on IP: " + this.config.host, false);
+                    this.generic.printOutputChannel("Connected on IP: " + this.config.host);
                 }
             }).catch(reason => {
-                response.status = false;
-                response.message = reason;
+                response.error = Error(reason);
             });
         } else {
-            response.status = true;
+            response.data = this.nodessh;
         }
         return response;
     }
@@ -71,8 +68,8 @@ export class SshFunctions {
             this.generic.getMessageSeparator('SSH FUNCTIONS');
             let options: SSHExecCommandOptions = {
                 cwd: cwd,
-                onStderr: (data) => { this.generic.printOutputChannel(data, true, title); },
-                onStdout: (data) => { this.generic.printOutputChannel(data, true, title); }
+                onStderr: (data) => { this.generic.printOutputChannel(data, { isNewLine: true, title: title }); },
+                onStdout: (data) => { this.generic.printOutputChannel(data, { isNewLine: true, title: title }); }
             };
             this.nodessh.exec(cmd, args, options);
         } else {

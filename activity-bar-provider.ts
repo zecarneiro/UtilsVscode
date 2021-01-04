@@ -1,11 +1,11 @@
 import * as vscode from "vscode";
-import { IActivityBarProvider } from "./interface/activity-bar-provider";
+import { IActivityBarProvider } from "./interface/activity-bar-provider-interface";
 
 export class ActivityBarProvider implements vscode.TreeDataProvider<any> {
     constructor(
         private outline: IActivityBarProvider[] | vscode.TreeItem[],
         private isAllCollapsed: boolean = true
-    ) {}
+    ) { }
 
     getTreeItem(item: any): vscode.TreeItem | Thenable<vscode.TreeItem> {
         if (item && item.children) {

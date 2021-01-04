@@ -1,20 +1,50 @@
 import { Terminal } from './terminal';
-import { IStringReplace, IRegVsCmd } from './interface/generic';
-import { NotifyEnum, PlatformTypeEnum } from './enum/generic';
+import { IStringReplace, IRegVsCmd, IProcessing, IPrintOutputChannel, IExtensionInfo, IStatusBar } from './interface/generic-interface';
+import { NotifyEnum, PlatformTypeEnum } from './enum/generic-enum';
 import * as vscode from 'vscode';
 import * as os from 'os';
-import * as fs from 'fs';
+import * as fse from 'fs-extra';
 import * as moment from 'moment';
-import { IActivityBarProvider } from './interface/activity-bar-provider';
+import { IActivityBarProvider } from './interface/activity-bar-provider-interface';
 import { ActivityBarProvider } from './activity-bar-provider';
-import { existsSync } from 'fs';
 
 export class Generic {
     constructor(
-        private appName: string,
-        private outputChannel: vscode.OutputChannel,
+        private extensionId: string,
         private extensionContext: vscode.ExtensionContext
     ) { }
+
+    private _extensionData: IExtensionInfo | undefined;
+    get extensionData(): IExtensionInfo {
+        if (!this._extensionData) {
+            let extension = vscode.extensions.getExtension(this.extensionId);
+            let jsonData = extension && extension["packageJSON"] ? extension["packageJSON"] : undefined;
+            this._extensionData = {} as IExtensionInfo;
+
+            if (jsonData) {
+                this._extensionData = {
+                    author: jsonData['author']['name'],
+                    publisher: jsonData['publisher'],
+                    name: jsonData['name'],
+                    displayName: jsonData['displayName'],
+                    version: jsonData['version'],
+                    main: jsonData['main'],
+                    id: jsonData['id'],
+                    path: this.extensionContext.extensionPath,
+                    configData: vscode.workspace.getConfiguration(jsonData['name']),
+                    outputChannel: vscode.window.createOutputChannel(jsonData['displayName']),
+                    terminal: new Terminal(jsonData['displayName'], this)
+                };
+            }
+        }
+        return this._extensionData;
+    }
+
+    /**============================================
+     *  GET_MESSAGE_SEPARATOR
+     *  FORMAT_DATE
+     *  GET_ENUM_VALUE_NAME
+     *=============================================**/
 
     getMessageSeparator(callerName?: string): string {
         let dateVal = this.formatDate(new Date);
@@ -35,6 +65,7 @@ export class Generic {
         }
         return "";
     }
+    /*=============== END OF SECTION ==============*/
 
     /**============================================
      *  NOTIFY
@@ -43,8 +74,8 @@ export class Generic {
      *  SHOW_FILES_MD
      *  SHOW_TEXT_DOCUMENT
      *=============================================**/
-    notify(data: string, type?: NotifyEnum) {
-        let message = `${this.appName}: ${data}`;
+    notify(data: any, type?: NotifyEnum) {
+        let message = `${this.extensionData.displayName}: ${data}`;
         switch (type) {
             case NotifyEnum.warning:
                 vscode.window.showWarningMessage(message);
@@ -58,15 +89,29 @@ export class Generic {
         }
     }
 
-    printOutputChannel(data: any, isSetSeparator: boolean = true, title?: string, isClear?: boolean) {
-        if (isSetSeparator) {
-            data = this.getMessageSeparator(title) + data;
+    printOutputChannel(data: any, options?: IPrintOutputChannel) {
+        let config: IPrintOutputChannel = options ? options : {
+            isNewLine: true,
+        };
+        if (!config.encoding) {
+            config.encoding = 'utf8';
         }
-        if (isClear) {
-            this.outputChannel.clear();
+
+        if (config.hasSeparator) {
+            data = this.getMessageSeparator(config.title) + data;
+            config.isNewLine = false;
         }
-        this.outputChannel.appendLine(data);
-        this.outputChannel.show();
+        if (config.isClear) {
+            this.extensionData.outputChannel.clear();
+        }
+
+        data = data.toString(config.encoding);
+        if (config.isNewLine) {
+            this.extensionData.outputChannel.appendLine(data);
+        } else {
+            this.extensionData.outputChannel.append(data);
+        }
+        this.extensionData.outputChannel.show();
     }
 
     showWebViewHTML(body: string, title?: string) {
@@ -111,6 +156,8 @@ export class Generic {
      *  CREATE_STATUS_BAR
      *  CREATE_QUICK_PICK
      *  CREATE_VSCODE_COMMAND
+     *  RUN_VSCODE_COMMAND
+     *  SHOW_OPEN_DIALOG
      *=============================================**/
     async createInputBox(inputBoxOptions: vscode.InputBoxOptions): Promise<string | undefined> {
         inputBoxOptions.ignoreFocusOut = false;
@@ -118,27 +165,22 @@ export class Generic {
         return response;
     }
 
-    createActivityBar(data: IActivityBarProvider[] | vscode.TreeItem[], id: string) {
-        let activityBar: ActivityBarProvider = new ActivityBarProvider(data);
+    createActivityBar(data: IActivityBarProvider[] | vscode.TreeItem[], id: string, isAllCollapsed?: boolean) {
+        let activityBar: ActivityBarProvider = new ActivityBarProvider(data, isAllCollapsed);
         activityBar.create(id);
     }
 
-    createStatusBar(text: any, command: any, tooltip?: any) {
+    createStatusBar(options: IStatusBar) {
         const statusbar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 0);
-        statusbar.text = text;
-        statusbar.command = command;
-        statusbar.tooltip = tooltip;
+        statusbar.text = options.text;
+        statusbar.command = options.command;
+        statusbar.tooltip = options.tooltip;
         statusbar.show();
     }
 
-    /*export function showQuickPick(items: string[] | Thenable<string[]>, options: QuickPickOptions & { canPickMany: true; }, token?: CancellationToken): Thenable<string[] | undefined>;
-    export function showQuickPick(items: string[] | Thenable<string[]>, options?: QuickPickOptions, token?: CancellationToken): Thenable<string | undefined>;
-    export function showQuickPick<T extends QuickPickItem>(items: T[] | Thenable<T[]>, options: QuickPickOptions & { canPickMany: true; }, token?: CancellationToken): Thenable<T[] | undefined>;
-    export function showQuickPick<T extends QuickPickItem>(items: T[] | Thenable<T[]>, options?: QuickPickOptions, token?: CancellationToken): Thenable<T | undefined>;
-    */
-
-    createQuickPick(items: vscode.QuickPickItem[], options: vscode.QuickPickOptions): Thenable<vscode.QuickPickItem[] | vscode.QuickPickItem | undefined> {
-        return vscode.window.showQuickPick<vscode.QuickPickItem>(items, options);
+    async createQuickPick(items: vscode.QuickPickItem[], options: vscode.QuickPickOptions): Promise<vscode.QuickPickItem[] | vscode.QuickPickItem | undefined> {
+        let seleted = await vscode.window.showQuickPick<vscode.QuickPickItem>(items, options);
+        return seleted;
     }
 
     createVscodeCommand(data: IRegVsCmd[]) {
@@ -146,6 +188,15 @@ export class Generic {
             let register = vscode.commands.registerCommand(value.command, value.callback, value.thisArg);
             this.extensionContext.subscriptions.push(register);
         });
+    }
+
+    // TODO: NOT TESTED
+    async runVscodeCommand<T>(command: string, ...rest: any[]): Promise<T | undefined> {
+        return await vscode.commands.executeCommand<T>(command, rest);
+    }
+
+    async showOpenDialog(options: vscode.OpenDialogOptions): Promise<vscode.Uri[] | undefined> {
+        return await vscode.window.showOpenDialog(options);
     }
     /*=============== END OF SECTION ==============*/
 
@@ -162,15 +213,16 @@ export class Generic {
 
     readDocument(file: string): string {
         file = this.resolvePath(file) as string;
-        return fs.readFileSync(file, { encoding: 'utf8', flag: 'r' });
+        let data = fse.readFileSync(file, { encoding: 'utf8', flag: 'r' });
+        return data.toString();
     }
 
     writeDocument(file: string, data: any) {
         file = this.resolvePath(file) as string;
-        fs.writeFileSync(file, data, { encoding: 'utf8', flag: 'w' });
+        fse.writeFileSync(file, data, { encoding: 'utf8', flag: 'w' });
     }
 
-    createTempFile(fileName: string, data?: any): string {
+    createTempFile(fileName: string, data?: any) {
         let tempdir = os.tmpdir();
         let temFile = this.resolvePath(`${tempdir}/${fileName}`) as string;
         this.writeDocument(temFile, data);
@@ -178,12 +230,7 @@ export class Generic {
     }
 
     fileExist(file: string): boolean {
-        let exist: boolean = false;
-        file = this.resolvePath(file) as string;
-        if (existsSync(file)) {
-            exist = true;
-        }
-        return exist;
+        return fse.existsSync(file);
     }
     /*=============== END OF SECTION ==============*/
 
@@ -231,8 +278,8 @@ export class Generic {
      *=============================================**/
     getBase64File(file: string): string {
         file = this.resolvePath(file) as string;
-        let buff = fs.readFileSync(file).toString('base64');
-        return buff;
+        let buff = fse.readFileSync(file);
+        return buff.toString('base64');
     }
 
     getBase64URL(content64: string, type: string): string {
@@ -244,6 +291,7 @@ export class Generic {
      *  GET_PLATFORM
      *  REMOVE_DUPLICATES_VALUES
      *  INSTALL_UNINSTALL_EXTENSIONS
+     *  SHOW_PROCESSING
      *=============================================**/
     getPlatform(): PlatformTypeEnum | undefined {
         switch (process.platform) {
@@ -251,6 +299,8 @@ export class Generic {
                 return PlatformTypeEnum.linux;
             case 'win32':
                 return PlatformTypeEnum.windows;
+            case 'darwin':
+                return PlatformTypeEnum.osx;
             default:
                 return undefined;
         }
@@ -276,11 +326,25 @@ export class Generic {
         return array;
     }
 
-    installUninstallExtensions(extensionsId: string, terminal: Terminal, isUninstall?: boolean) {
+    installUninstallExtensions(extensionsId: string, isUninstall?: boolean) {
         let commandExt = (isUninstall) ? 'code --uninstall-extension {0}' : 'code --install-extension {0}';
+        let extension = vscode.extensions.getExtension(extensionsId);
         const stringsReplace: IStringReplace[] = [{ search: '{0}', toReplace: extensionsId }];
-        const cmd = this.stringReplaceAll(commandExt, stringsReplace);
-        terminal.exec(cmd);
+        if ((isUninstall && extension) || (!isUninstall && !extension)) {
+            const cmd = this.stringReplaceAll(commandExt, stringsReplace);
+            this.extensionData.terminal.exec(cmd);
+        }
+    }
+
+    showProcessing(message: string, timeToPrint?: number): IProcessing {
+        this.printOutputChannel(message, { isNewLine: true });
+        let id: NodeJS.Timeout = setInterval(() => {
+            this.printOutputChannel('.', { isNewLine: false });
+        }, timeToPrint ? timeToPrint : 5000);
+        return {
+            timeoutId: id,
+            disable: () => { clearTimeout(id); }
+        };
     }
     /*=============== END OF SECTION ==============*/
 }
