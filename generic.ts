@@ -49,8 +49,8 @@ export class Generic {
     getMessageSeparator(callerName?: string): string {
         let dateVal = this.formatDate(new Date);
         let message = (callerName && callerName.length > 0)
-            ? `\n\n------ ${callerName}: ${dateVal} ------\n`
-            : `\n\n------ ${dateVal} ------\n`;
+            ? `\n------ ${callerName}: ${dateVal} ------\n`
+            : `\n------ ${dateVal} ------\n`;
         return message;
     }
 

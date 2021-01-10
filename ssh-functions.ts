@@ -58,8 +58,7 @@ export class SshFunctions {
         }
     }
 
-    execCmdWithStreaming(cmd: string, args: string[], cwd: string, proccessNumber: number) {
-        let title = 'Response for proccess: ' + proccessNumber;
+    execCmdWithStreaming(cmd: string, args: string[], cwd: string, callback: (onStdout?: Buffer | undefined, onStderr?: Buffer | undefined) => void) {
         if (!this.nodessh.isConnected()) {
             this.connect();
         }
@@ -68,12 +67,12 @@ export class SshFunctions {
             this.generic.getMessageSeparator('SSH FUNCTIONS');
             let options: SSHExecCommandOptions = {
                 cwd: cwd,
-                onStderr: (data) => { this.generic.printOutputChannel(data, { isNewLine: true, title: title }); },
-                onStdout: (data) => { this.generic.printOutputChannel(data, { isNewLine: true, title: title }); }
+                onStderr: (data) => { callback(undefined, data); },
+                onStdout: (data) => { callback(data); }
             };
             this.nodessh.exec(cmd, args, options);
         } else {
-            this.generic.printOutputChannel(SshFunctionsMsgEnum.msgIsNotConnected);
+            callback(undefined, Buffer.from(SshFunctionsMsgEnum.msgIsNotConnected));
         }
     }
 }
