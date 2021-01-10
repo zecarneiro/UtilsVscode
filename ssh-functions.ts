@@ -1,3 +1,4 @@
+import { IExecCommand, IExecCommandResponse } from './interface/ssh-functions-interface';
 import { IResponse } from './interface/generic-interface';
 import { Config, NodeSSH, SSHExecCommandOptions } from 'node-ssh';
 import { SshFunctionsMsgEnum } from './enum/ssh-functions-enum';
@@ -58,8 +59,7 @@ export class SshFunctions {
         }
     }
 
-    execCmdWithStreaming(cmd: string, args: string[], cwd: string, proccessNumber: number) {
-        let title = 'Response for proccess: ' + proccessNumber;
+    execCmdWithStreaming(cmd: string, args: string[], cwd: string | undefined, callback: (onStdout?: Buffer | undefined, onStderr?: Buffer | undefined) => void) {
         if (!this.nodessh.isConnected()) {
             this.connect();
         }
@@ -68,12 +68,34 @@ export class SshFunctions {
             this.generic.getMessageSeparator('SSH FUNCTIONS');
             let options: SSHExecCommandOptions = {
                 cwd: cwd,
-                onStderr: (data) => { this.generic.printOutputChannel(data, { isNewLine: true, title: title }); },
-                onStdout: (data) => { this.generic.printOutputChannel(data, { isNewLine: true, title: title }); }
+
             };
-            this.nodessh.exec(cmd, args, options);
+            this.nodessh.exec(cmd, args, {
+                cwd: cwd,
+                onStderr: (data) => { callback(undefined, data); },
+                onStdout: (data) => { callback(data); }
+            }).then(res => {
+                this.generic.printOutputChannel("SSH Functions: Execution terminated");
+            });
         } else {
-            this.generic.printOutputChannel(SshFunctionsMsgEnum.msgIsNotConnected);
+            callback(undefined, Buffer.from(SshFunctionsMsgEnum.msgIsNotConnected));
         }
+    }
+
+    async execCommands(commands: IExecCommand[], isSquence?: boolean): Promise<IExecCommandResponse[]> {
+        let response: IExecCommandResponse[] = [];
+        for (const key in commands) {
+            this.generic.printOutputChannel("Exec: " + commands[key].command);
+            let res = await this.nodessh.execCommand(commands[key].command, commands[key].options && { execOptions: { pty: true } });
+            response.push({
+                command: commands[key].command,
+                response: res
+            });
+
+            if (isSquence && res.stderr) {
+                return response;
+            }
+        }
+        return response;
     }
 }

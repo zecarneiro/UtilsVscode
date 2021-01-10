@@ -1,5 +1,5 @@
 import { Terminal } from './terminal';
-import { IStringReplace, IRegVsCmd, IProcessing, IPrintOutputChannel, IExtensionInfo, IStatusBar } from './interface/generic-interface';
+import { IStringReplace, IRegVsCmd, IProcessing, IPrintOutputChannel, IExtensionInfo, IStatusBar, IResponse } from './interface/generic-interface';
 import { NotifyEnum, PlatformTypeEnum } from './enum/generic-enum';
 import * as vscode from 'vscode';
 import * as os from 'os';
@@ -49,8 +49,8 @@ export class Generic {
     getMessageSeparator(callerName?: string): string {
         let dateVal = this.formatDate(new Date);
         let message = (callerName && callerName.length > 0)
-            ? `\n\n------ ${callerName}: ${dateVal} ------\n`
-            : `\n\n------ ${dateVal} ------\n`;
+            ? `\n------ ${callerName}: ${dateVal} ------\n`
+            : `\n------ ${dateVal} ------\n`;
         return message;
     }
 
@@ -90,6 +90,7 @@ export class Generic {
     }
 
     printOutputChannel(data: any, options?: IPrintOutputChannel) {
+        let spaceObj = 4;
         let config: IPrintOutputChannel = options ? options : {
             isNewLine: true,
         };
@@ -105,7 +106,10 @@ export class Generic {
             this.extensionData.outputChannel.clear();
         }
 
-        data = data.toString(config.encoding);
+        if (data !== undefined && data !== null && typeof data !== "string") {
+            data = JSON.stringify(data, null, spaceObj);
+        }
+
         if (config.isNewLine) {
             this.extensionData.outputChannel.appendLine(data);
         } else {
@@ -258,17 +262,17 @@ export class Generic {
      *  GET_STORAGE
      *  SET_STORAGE
      *=============================================**/
-    getStorage<T = any>(key: string): T {
-        return this.extensionContext.globalState.get<T>(key) as T;
+    getStorage<T = any>(key: string): IResponse<T> {
+        let data = this.extensionContext.globalState.get<T>(key) as T;
+        return {
+            data: data,
+            error: data ? undefined : Error(`Storage for ${key} is empty or not exist`)
+        };
+
     }
 
     setStorage<T = any>(key: string, value: T | undefined) {
-        if (value) {
-            let oldValue = this.getStorage<T>(key);
-            if (oldValue !== value) {
-                this.extensionContext.globalState.update(key, value);
-            }
-        }
+        this.extensionContext.globalState.update(key, value);
     }
     /*=============== END OF SECTION ==============*/
 
@@ -345,6 +349,10 @@ export class Generic {
             timeoutId: id,
             disable: () => { clearTimeout(id); }
         };
+    }
+
+    static createGenericType<T>(tCreator: new (...args: []) => T): T {
+        return new tCreator();
     }
     /*=============== END OF SECTION ==============*/
 }

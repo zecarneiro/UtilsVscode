@@ -2,7 +2,7 @@
 Utils for vscode extensions
 
 ## First Configuration
-Go to `package.json` and merge
+1. Go to `package.json` and merge
 ```json
 ...
 "scripts": {
@@ -13,4 +13,10 @@ Go to `package.json` and merge
 }
 ...
 ```
+
+2. Node Dependencies
+    - `npm install fs-extra @types/fs-extra`
+    - `npm install @types/node-ssh node-ssh @types/ssh2 ssh2 @types/ssh2-streams`
+    - `npm install moment`
+
 Where `PATH_FOR_UTILS` are utils project directory
