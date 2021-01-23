@@ -36,7 +36,6 @@ export interface IExtensionInfo {
     id: string,
     path: string,
     configData: any,
-    outputChannel: vscode.OutputChannel,
     terminal: Terminal
 }
 export interface IStatusBar {

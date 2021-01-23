@@ -1,5 +1,5 @@
 import { Terminal } from './terminal';
-import { IStringReplace, IRegVsCmd, IProcessing, IPrintOutputChannel, IExtensionInfo, IStatusBar } from './interface/generic-interface';
+import { IStringReplace, IRegVsCmd, IProcessing, IPrintOutputChannel, IExtensionInfo, IStatusBar, IResponse } from './interface/generic-interface';
 import { NotifyEnum, PlatformTypeEnum } from './enum/generic-enum';
 import * as vscode from 'vscode';
 import * as os from 'os';
@@ -11,7 +11,8 @@ import { ActivityBarProvider } from './activity-bar-provider';
 export class Generic {
     constructor(
         private extensionId: string,
-        private extensionContext: vscode.ExtensionContext
+        private extensionContext: vscode.ExtensionContext,
+        private outputChannel: vscode.OutputChannel
     ) { }
 
     private _extensionData: IExtensionInfo | undefined;
@@ -32,7 +33,6 @@ export class Generic {
                     id: jsonData['id'],
                     path: this.extensionContext.extensionPath,
                     configData: vscode.workspace.getConfiguration(jsonData['name']),
-                    outputChannel: vscode.window.createOutputChannel(jsonData['displayName']),
                     terminal: new Terminal(jsonData['displayName'], this)
                 };
             }
@@ -90,6 +90,7 @@ export class Generic {
     }
 
     printOutputChannel(data: any, options?: IPrintOutputChannel) {
+        let spaceObj = 4;
         let config: IPrintOutputChannel = options ? options : {
             isNewLine: true,
         };
@@ -102,16 +103,19 @@ export class Generic {
             config.isNewLine = false;
         }
         if (config.isClear) {
-            this.extensionData.outputChannel.clear();
+            this.outputChannel.clear();
         }
 
-        data = data.toString(config.encoding);
-        if (config.isNewLine) {
-            this.extensionData.outputChannel.appendLine(data);
-        } else {
-            this.extensionData.outputChannel.append(data);
+        if (data !== undefined && data !== null && typeof data !== "string") {
+            data = JSON.stringify(data, null, spaceObj);
         }
-        this.extensionData.outputChannel.show();
+
+        if (config.isNewLine) {
+            this.outputChannel.appendLine(data);
+        } else {
+            this.outputChannel.append(data);
+        }
+        this.outputChannel.show();
     }
 
     showWebViewHTML(body: string, title?: string) {
@@ -258,17 +262,17 @@ export class Generic {
      *  GET_STORAGE
      *  SET_STORAGE
      *=============================================**/
-    getStorage<T = any>(key: string): T {
-        return this.extensionContext.globalState.get<T>(key) as T;
+    getStorage<T = any>(key: string): IResponse<T> {
+        let response: IResponse<T> = {
+            data: this.extensionContext.globalState.get<T>(key) as T,
+            error: undefined
+        };
+        response.error = response.data ? undefined : Error(`Storage for ${key} is empty or not exist`);
+        return this.copyJsonData(response);
     }
 
     setStorage<T = any>(key: string, value: T | undefined) {
-        if (value) {
-            let oldValue = this.getStorage<T>(key);
-            if (oldValue !== value) {
-                this.extensionContext.globalState.update(key, value);
-            }
-        }
+        this.extensionContext.globalState.update(key, value);
     }
     /*=============== END OF SECTION ==============*/
 
@@ -326,6 +330,10 @@ export class Generic {
         return array;
     }
 
+    copyJsonData(data: any): any {
+        return JSON.parse(JSON.stringify(data));
+    }
+
     installUninstallExtensions(extensionsId: string, isUninstall?: boolean) {
         let commandExt = (isUninstall) ? 'code --uninstall-extension {0}' : 'code --install-extension {0}';
         let extension = vscode.extensions.getExtension(extensionsId);
@@ -345,6 +353,15 @@ export class Generic {
             timeoutId: id,
             disable: () => { clearTimeout(id); }
         };
+    }
+
+    static createGenericType<T>(tCreator: new (...args: []) => T): T {
+        return new tCreator();
+    }
+
+    static createOutputChannel(name: string): vscode.OutputChannel {
+        name = name.replace(/ /g, '').toLocaleLowerCase();
+        return vscode.window.createOutputChannel(name);
     }
     /*=============== END OF SECTION ==============*/
 }
