@@ -11,7 +11,8 @@ import { ActivityBarProvider } from './activity-bar-provider';
 export class Generic {
     constructor(
         private extensionId: string,
-        private extensionContext: vscode.ExtensionContext
+        private extensionContext: vscode.ExtensionContext,
+        private outputChannel: vscode.OutputChannel
     ) { }
 
     private _extensionData: IExtensionInfo | undefined;
@@ -32,7 +33,6 @@ export class Generic {
                     id: jsonData['id'],
                     path: this.extensionContext.extensionPath,
                     configData: vscode.workspace.getConfiguration(jsonData['name']),
-                    outputChannel: vscode.window.createOutputChannel(jsonData['displayName']),
                     terminal: new Terminal(jsonData['displayName'], this)
                 };
             }
@@ -103,7 +103,7 @@ export class Generic {
             config.isNewLine = false;
         }
         if (config.isClear) {
-            this.extensionData.outputChannel.clear();
+            this.outputChannel.clear();
         }
 
         if (data !== undefined && data !== null && typeof data !== "string") {
@@ -111,11 +111,11 @@ export class Generic {
         }
 
         if (config.isNewLine) {
-            this.extensionData.outputChannel.appendLine(data);
+            this.outputChannel.appendLine(data);
         } else {
-            this.extensionData.outputChannel.append(data);
+            this.outputChannel.append(data);
         }
-        this.extensionData.outputChannel.show();
+        this.outputChannel.show();
     }
 
     showWebViewHTML(body: string, title?: string) {
@@ -263,12 +263,12 @@ export class Generic {
      *  SET_STORAGE
      *=============================================**/
     getStorage<T = any>(key: string): IResponse<T> {
-        let data = this.extensionContext.globalState.get<T>(key) as T;
-        return {
-            data: data,
-            error: data ? undefined : Error(`Storage for ${key} is empty or not exist`)
+        let response: IResponse<T> = {
+            data: this.extensionContext.globalState.get<T>(key) as T,
+            error: undefined
         };
-
+        response.error = response.data ? undefined : Error(`Storage for ${key} is empty or not exist`);
+        return this.copyJsonData(response);
     }
 
     setStorage<T = any>(key: string, value: T | undefined) {
@@ -330,6 +330,10 @@ export class Generic {
         return array;
     }
 
+    copyJsonData(data: any): any {
+        return JSON.parse(JSON.stringify(data));
+    }
+
     installUninstallExtensions(extensionsId: string, isUninstall?: boolean) {
         let commandExt = (isUninstall) ? 'code --uninstall-extension {0}' : 'code --install-extension {0}';
         let extension = vscode.extensions.getExtension(extensionsId);
@@ -353,6 +357,11 @@ export class Generic {
 
     static createGenericType<T>(tCreator: new (...args: []) => T): T {
         return new tCreator();
+    }
+
+    static createOutputChannel(name: string): vscode.OutputChannel {
+        name = name.replace(/ /g, '').toLocaleLowerCase();
+        return vscode.window.createOutputChannel(name);
     }
     /*=============== END OF SECTION ==============*/
 }

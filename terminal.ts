@@ -6,22 +6,33 @@ import { PlatformTypeEnum } from './enum/generic-enum';
 
 export class Terminal {
     private terminal: vscode.Terminal;
-    private isClosed: boolean = false;
+    private isClosed: boolean;
 
     constructor(
         private appName: string,
         private generic: Generic
     ) {
-        this.terminal = vscode.window.createTerminal(this.appName);
-        vscode.window.onDidCloseTerminal(term => {
-            this.isClosed = true;
-        });
+        this.appName = this.appName.replace(/ /g, '').toLocaleLowerCase();
+        this.isClosed = true;
+        this.terminal = {} as vscode.Terminal;
+        this.createTerminal(true);
     }
 
-    private createTerminal() {
+    private createTerminal(isInit?: boolean) {
+        if (isInit) {
+            let terminal = vscode.window.terminals.find(t => t.name === this.appName);
+            if (terminal) {
+                this.terminal = terminal;
+                this.isClosed = false;
+            }
+        }
+
         if (this.isClosed) {
-            this.terminal = vscode.window.createTerminal(this.appName);
             this.isClosed = false;
+            this.terminal = vscode.window.createTerminal(this.appName);
+            vscode.window.onDidCloseTerminal(term => {
+                this.isClosed = true;
+            });
         }
     }
 
