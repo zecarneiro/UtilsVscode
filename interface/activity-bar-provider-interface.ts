@@ -1,6 +1,6 @@
-import * as vscode from "vscode";
+import { TreeItem } from "vscode";
 
 export interface IActivityBarProvider {
     label: string;
-    children?: vscode.TreeItem[];
+    children?: TreeItem[];
 }

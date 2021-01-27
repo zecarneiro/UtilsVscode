@@ -1,35 +1,33 @@
-import * as vscode from "vscode";
+import { TreeDataProvider, TreeItem, TreeItemCollapsibleState, window } from "vscode";
 import { IActivityBarProvider } from "./interface/activity-bar-provider-interface";
 
-export class ActivityBarProvider implements vscode.TreeDataProvider<any> {
+export class ActivityBarProvider implements TreeDataProvider<any> {
     constructor(
-        private outline: IActivityBarProvider[] | vscode.TreeItem[],
+        private outline: IActivityBarProvider[] | TreeItem[],
         private isAllCollapsed: boolean = true
     ) { }
 
-    getTreeItem(item: any): vscode.TreeItem | Thenable<vscode.TreeItem> {
+    getTreeItem(item: any): TreeItem | Thenable<TreeItem> {
         if (item && item.children) {
             let state = this.isAllCollapsed
-                ? vscode.TreeItemCollapsibleState.Collapsed
+                ? TreeItemCollapsibleState.Collapsed
                 : item.children && item.children.length > 0
-                    ? vscode.TreeItemCollapsibleState.Expanded
-                    : vscode.TreeItemCollapsibleState.Collapsed;
-            return new vscode.TreeItem(item.label, state);
+                    ? TreeItemCollapsibleState.Expanded
+                    : TreeItemCollapsibleState.Collapsed;
+            return new TreeItem(item.label, state);
         }
         return item;
     }
-
-    getChildren(element?: any): Thenable<IActivityBarProvider[] | vscode.TreeItem[]> {
+    getChildren(element?: any): Thenable<IActivityBarProvider[] | TreeItem[]> {
         if (element) {
             return element.label ? Promise.resolve(element.children) : Promise.resolve(element);
         } else {
             return Promise.resolve(this.outline);
         }
     }
-
     create(viewId: string) {
-        vscode.window.registerTreeDataProvider(viewId, new ActivityBarProvider(this.outline));
-        vscode.window.createTreeView(viewId, {
+        window.registerTreeDataProvider(viewId, new ActivityBarProvider(this.outline));
+        window.createTreeView(viewId, {
             treeDataProvider: new ActivityBarProvider(this.outline)
         });
     }

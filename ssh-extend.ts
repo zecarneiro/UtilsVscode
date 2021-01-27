@@ -1,14 +1,15 @@
-import { IExecCommand, IExecCommandResponse } from './interface/ssh-functions-interface';
-import { IResponse } from './interface/generic-interface';
-import { Config, NodeSSH, SSHExecCommandOptions } from 'node-ssh';
-import { SshFunctionsMsgEnum } from './enum/ssh-functions-enum';
-import { Generic } from './generic';
+import { LibStatic } from './lib-static';
+import { ConsoleExtend } from './console-extend';
+import { Config, NodeSSH, SSHExecCommandOptions } from "node-ssh";
+import { SshFunctionsMsgEnum } from "./enum/ssh-extend-enum";
+import { IResponse } from "./interface/lib-interface";
+import { IExecCommand, IExecCommandResponse } from './interface/ssh-extend-interface';
 
-export class SshFunctions {
+export class SshExtend {
     nodessh: NodeSSH = new NodeSSH();
 
     constructor(
-        private generic: Generic
+        private console: ConsoleExtend
     ) { }
 
     private _config: Config = {};
@@ -41,7 +42,7 @@ export class SshFunctions {
                 if (value.isConnected()) {
                     this.nodessh = value;
                     response.data = this.nodessh;
-                    this.generic.printOutputChannel("Connected on IP: " + this.config.host);
+                    this.console.onOutputChannel("Connected on IP: " + this.config.host);
                 }
             }).catch(reason => {
                 response.error = Error(reason);
@@ -65,7 +66,7 @@ export class SshFunctions {
         }
 
         if (this.nodessh.isConnected()) {
-            this.generic.getMessageSeparator('SSH FUNCTIONS');
+            LibStatic.getMessageSeparator('SSH FUNCTIONS');
             let options: SSHExecCommandOptions = {
                 cwd: cwd,
 
@@ -75,7 +76,7 @@ export class SshFunctions {
                 onStderr: (data) => { callback(undefined, data); },
                 onStdout: (data) => { callback(data); }
             }).then(res => {
-                this.generic.printOutputChannel("SSH Functions: Execution terminated");
+                this.console.onOutputChannel("SSH Functions: Execution terminated");
             });
         } else {
             callback(undefined, Buffer.from(SshFunctionsMsgEnum.msgIsNotConnected));
@@ -85,7 +86,7 @@ export class SshFunctions {
     async execCommands(commands: IExecCommand[], isSquence?: boolean): Promise<IExecCommandResponse[]> {
         let response: IExecCommandResponse[] = [];
         for (const key in commands) {
-            this.generic.printOutputChannel("Exec: " + commands[key].command);
+            this.console.onOutputChannel("Exec: " + commands[key].command);
             let res = await this.nodessh.execCommand(commands[key].command, commands[key].options && { execOptions: { pty: true } });
             response.push({
                 command: commands[key].command,
