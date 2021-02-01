@@ -45,7 +45,7 @@ export class Lib {
         let data = defaultValue
             ? this.context.globalState.get<T>(key, defaultValue) as T
             : this.context.globalState.get<T>(key) as T;
-        return LibStatic.copyJsonData(data);
+        return data ? LibStatic.copyJsonData(data) : data;
     }
     setStorage<T = any>(key: string, value: T | undefined) {
         this.context.globalState.update(key, value);

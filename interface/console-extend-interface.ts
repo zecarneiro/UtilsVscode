@@ -1,3 +1,4 @@
+import { ShellTypeEnum } from './../enum/console-extends-enum';
 import { Terminal } from "vscode";
 
 export interface IPrintOutputChannel {
@@ -8,8 +9,14 @@ export interface IPrintOutputChannel {
     encoding?: string
 }
 export interface ITerminals {
-    wsl: Terminal | undefined,
-    powershell: Terminal | undefined,
-    gitBash: Terminal | undefined,
-    bash: Terminal | undefined
+    cmd: Terminal | undefined,
+    bash: Terminal | undefined,
+    osxTerminal: Terminal | undefined
+}
+export interface IShellCmd {
+    name: string,
+    command: string,
+    type: ShellTypeEnum,
+    external: string,
+    externalArgs: string
 }

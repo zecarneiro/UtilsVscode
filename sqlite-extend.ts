@@ -50,12 +50,12 @@ export class SqliteExtend {
         let message: string | undefined;
 
         // Validate sqlite command
-        status = LibStatic.fileExist(this.sqliteCommand);
+        status = LibStatic.fileExist(this.sqliteCommand, false);
         message = !status ? "Invalid Sqlite3 command" : undefined;
 
         // Validate file
         if (status) {
-            status = LibStatic.fileExist(this._file);
+            status = LibStatic.fileExist(this._file, false);
             message = !status ? "Invalid database file" : undefined;
         }
         return {
