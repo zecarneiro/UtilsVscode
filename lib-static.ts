@@ -156,8 +156,11 @@ export class LibStatic {
         LibStatic.writeDocument(temFile, data);
         return temFile;
     }
-    static fileExist(file: string): boolean {
-        return fse.existsSync(file);
+    static fileExist(file: string, isDir: boolean): boolean {
+        if (fse.existsSync(file)) {
+            return (isDir) ? fse.statSync(file).isDirectory() : fse.statSync(file).isFile();
+        }
+        return false;
     }
     static getWorkspaceDir(name?: string): WorkspaceFolder | WorkspaceFolder[] | undefined {
         if (workspace.workspaceFolders) {

@@ -1,4 +1,3 @@
-//import * as vscode from 'vscode';
 import { Command } from "vscode";
 
 export interface IStringReplace {
