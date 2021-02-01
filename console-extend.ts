@@ -7,7 +7,6 @@ import { ShellTypeEnum } from './enum/console-extends-enum';
 
 export class ConsoleExtend {
     private cwdKey = '{CWD}';
-    private commandsKey = '{COMMANDS}';
     private terminals: ITerminals = {
         cmd: undefined,
         bash: undefined,
@@ -19,6 +18,7 @@ export class ConsoleExtend {
     ) { }
 
     private bash(command?: string): IShellCmd {
+        command = command ? command : '';
         let data: IShellCmd = {
             name: this.extensionId + ' - Bash',
             command: '',
@@ -29,7 +29,11 @@ export class ConsoleExtend {
         if (LibStatic.getPlatform() === PlatformTypeEnum.linux) {
             data.command = 'bash';
             data.external = 'gnome-terminal';
-            data.external = `--working-directory="${this.cwdKey}" -x ${data.command} -c "${this.commandsKey}"`;
+            data.external = `--working-directory="${this.cwdKey}"`;
+
+            if (command.length > 0) {
+                data.externalArgs += ` -x ${data.command} -c "${command}"`;
+            }
         } else if (LibStatic.getPlatform() === PlatformTypeEnum.windows) {
             const gitPath = LibStatic.resolvePath<string>(`${LibStatic.readEnvVariable('PROGRAMFILES')}/Git`);
             if (LibStatic.fileExist(gitPath, true)) {
@@ -38,8 +42,8 @@ export class ConsoleExtend {
                 let cmdData = this.cmd(commandGit);
                 data.external = cmdData.external;
                 data.externalArgs = cmdData.externalArgs;
-                if (command && command.length > 0) {
-                    data.externalArgs = `${data.externalArgs} -i -l -c "${this.commandsKey}; exec bash"`;
+                if (command.length > 0) {
+                    data.externalArgs = `${data.externalArgs} -i -l -c "${command}; exec bash"`;
                 }
             }
         } else {
@@ -49,6 +53,7 @@ export class ConsoleExtend {
     }
 
     private cmd(command?: string): IShellCmd {
+        command = command ? command : '';
         let data: IShellCmd = {
             name: this.extensionId + ' - CMD',
             command: 'cmd.exe',
@@ -60,6 +65,7 @@ export class ConsoleExtend {
     }
 
     private powershell(command?: string): IShellCmd {
+        command = command ? command : '';
         let data: IShellCmd = {
             name: this.extensionId + ' - Poweshell',
             command: 'powershell.exe',
@@ -71,6 +77,7 @@ export class ConsoleExtend {
     }
 
     private osxTerminal(command?: string): IShellCmd {
+        command = command ? command : '';
         let data: IShellCmd = {
             name: this.extensionId + ' - OSX Terminal',
             command: '/Applications/Utilities/Terminal.app',
@@ -86,11 +93,11 @@ export class ConsoleExtend {
         switch (type) {
             case ShellTypeEnum.system:
                 if (LibStatic.getPlatform() === PlatformTypeEnum.linux) {
-                    return this.getShell(ShellTypeEnum.bash);
+                    return this.getShell(ShellTypeEnum.bash, command);
                 } else if (LibStatic.getPlatform() === PlatformTypeEnum.osx) {
-                    return this.getShell(ShellTypeEnum.osxTerminal);
+                    return this.getShell(ShellTypeEnum.osxTerminal, command);
                 } else if (LibStatic.getPlatform() === PlatformTypeEnum.windows) {
-                    return this.getShell(ShellTypeEnum.cmd);
+                    return this.getShell(ShellTypeEnum.cmd, command);
                 } else {
                     throw new Error("Invalid Platform");
                 }
@@ -301,8 +308,7 @@ export class ConsoleExtend {
             let typeShellData = this.getShell(shell, command);
             let base: string = typeShellData.external;
             let args: string = LibStatic.stringReplaceAll(typeShellData.externalArgs, [
-                { search: this.cwdKey, toReplace: cwd },
-                { search: this.commandsKey, toReplace: command ? command : '' }
+                { search: this.cwdKey, toReplace: cwd }
             ]);
 
             if (base && base.length > 0) {
