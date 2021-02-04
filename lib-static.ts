@@ -183,6 +183,22 @@ export class LibStatic {
     static getExtensionPath(context: ExtensionContext): string {
         return context.extensionPath;
     }
+    static getVscodeStorageStateFile(): string {
+        let homeDir: string = os.homedir();
+        let stateStorageFile: string = 'Code/User/globalStorage/state.vscdb';
+        switch (LibStatic.getPlatform()) {
+            case PlatformTypeEnum.linux:
+                stateStorageFile = homeDir + '/.config/' + stateStorageFile;
+                break;
+            case PlatformTypeEnum.windows:
+                stateStorageFile = homeDir + '\\AppData\\Roaming\\' + stateStorageFile;
+                break;
+            default:
+                stateStorageFile = '';
+                break;
+        }
+        return LibStatic.resolvePath(stateStorageFile);
+    }
     /*=============== END OF SECTION FILES AND DIRECTORIES ==============*/
 
     /**============================================
@@ -206,6 +222,13 @@ export class LibStatic {
     static copyJsonData(data: any): any {
         return JSON.parse(JSON.stringify(data));
     }
+    static jsonConcat(object: any, object1: any): any {
+        for (var key in object1) {
+            object[key] = object1[key];
+        }
+        return LibStatic.copyJsonData(object);
+    }
+       
     static removeDuplicatesValues(array: Array<any>): Array<any> {
         if (array instanceof Array) {
             let newArray: any[] = [];
@@ -280,6 +303,10 @@ export class LibStatic {
     }
     static async runVscodeCommand<T>(command: string, ...rest: any[]): Promise<T | undefined> {
         return await commands.executeCommand<T>(command, rest) as T;
+    }
+    static isAsyncFunction(caller: any): boolean {
+        const asyncFunction = (async () => {}).constructor;
+        return caller instanceof asyncFunction;
     }
     /*=============== END OF SECTION ==============*/
 }

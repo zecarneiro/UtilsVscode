@@ -26,6 +26,11 @@ export interface IBase64 {
     base: string,
     url: string
 }
+export interface ICallable {
+    callback: (...args: any[]) => any;
+    args?: any[],
+    thisArg?: any
+}
 
 export class IExtensionInfo {
     author: string = '';

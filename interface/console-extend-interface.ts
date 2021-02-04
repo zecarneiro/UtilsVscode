@@ -20,3 +20,7 @@ export interface IShellCmd {
     external: string,
     externalArgs: string
 }
+export interface IEnvVariable {
+    outputChannel: NodeJS.ProcessEnv,
+    terminal: { [key: string]: string | null }
+}

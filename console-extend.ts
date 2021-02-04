@@ -1,7 +1,7 @@
 import { LibStatic } from './lib-static';
 import { OutputChannel, Terminal, TerminalOptions, Uri, window } from "vscode";
-import { exec, spawn, SpawnOptionsWithoutStdio } from 'child_process';
-import { IPrintOutputChannel, ITerminals, IShellCmd } from './interface/console-extend-interface';
+import { exec, spawn, SpawnOptionsWithoutStdio, spawnSync, SpawnSyncReturns } from 'child_process';
+import { IPrintOutputChannel, ITerminals, IShellCmd, IEnvVariable } from './interface/console-extend-interface';
 import { NotifyEnum, PlatformTypeEnum } from './enum/lib-enum';
 import { ShellTypeEnum } from './enum/console-extends-enum';
 
@@ -14,13 +14,50 @@ export class ConsoleExtend {
     };
 
     constructor(
-        private extensionId: string
+        private name: string
     ) { }
+
+    private _env: IEnvVariable = {outputChannel: {...process.env}, terminal: {}};
+    get env(): IEnvVariable {
+        return LibStatic.copyJsonData(this._env);
+    }
+    set env(value: IEnvVariable) {
+        this._env.outputChannel = LibStatic.jsonConcat(this.env.outputChannel, value.outputChannel);
+        this._env.terminal = LibStatic.jsonConcat(this.env.terminal, value.terminal);
+    }
+    deleteEnv(key?: string) {
+        let data: IEnvVariable = {outputChannel: {}, terminal: {}};
+        if (key) {
+            for (var keyData in this.env.outputChannel) {
+                if (key !== keyData) {
+                    data.outputChannel[keyData] = this.env.outputChannel[keyData];
+                }
+            }
+            for (var keyData in this.env.terminal) {
+                if (key !== keyData) {
+                    data.terminal[keyData] = this.env.terminal[keyData];
+                }
+            }
+        }
+        this._env = LibStatic.copyJsonData(data);
+    }
+    get separatorEnv(): string {
+        switch (LibStatic.getPlatform()) {
+            case PlatformTypeEnum.linux:
+                return  ':';
+            case PlatformTypeEnum.windows:
+                return ';';
+            case PlatformTypeEnum.osx:
+                return '';
+            default:
+                throw new Error("Invalid Platform");
+        }
+    }
 
     private bash(command?: string): IShellCmd {
         command = command ? command : '';
         let data: IShellCmd = {
-            name: this.extensionId + ' - Bash',
+            name: this.name + ' - Bash',
             command: '',
             type: ShellTypeEnum.bash,
             external: '',
@@ -55,7 +92,7 @@ export class ConsoleExtend {
     private cmd(command?: string): IShellCmd {
         command = command ? command : '';
         let data: IShellCmd = {
-            name: this.extensionId + ' - CMD',
+            name: this.name + ' - CMD',
             command: 'cmd.exe',
             type: ShellTypeEnum.cmd,
             external: 'cmd',
@@ -67,7 +104,7 @@ export class ConsoleExtend {
     private powershell(command?: string): IShellCmd {
         command = command ? command : '';
         let data: IShellCmd = {
-            name: this.extensionId + ' - Poweshell',
+            name: this.name + ' - Poweshell',
             command: 'powershell.exe',
             type: ShellTypeEnum.powershell,
             external: '',
@@ -79,7 +116,7 @@ export class ConsoleExtend {
     private osxTerminal(command?: string): IShellCmd {
         command = command ? command : '';
         let data: IShellCmd = {
-            name: this.extensionId + ' - OSX Terminal',
+            name: this.name + ' - OSX Terminal',
             command: '/Applications/Utilities/Terminal.app',
             type: ShellTypeEnum.osxTerminal,
             external: 'open',
@@ -120,43 +157,75 @@ export class ConsoleExtend {
     private _outputChannel: OutputChannel | undefined;
     get outputChannel(): OutputChannel {
         if (!this._outputChannel) {
-            this._outputChannel = window.createOutputChannel(this.extensionId);
+            this._outputChannel = window.createOutputChannel(this.name);
         }
         return this._outputChannel as OutputChannel;
     }
 
-    execOutputChannel(command: string, cwd?: string, shell?: ShellTypeEnum) {
-        let options: SpawnOptionsWithoutStdio = {
-            cwd: cwd,
-            shell: shell ? this.getShell(shell).command : this.getShell(ShellTypeEnum.system).command
+    execOutputChannel(command: string, options?: SpawnOptionsWithoutStdio & {isWait?: boolean, printCmd?: boolean}, callback?: (output?: any, error?: Error, end?: any) => void): SpawnSyncReturns<Buffer> | undefined {
+        let processResult = (data?: any, error?: any, end?: any) => {
+            if (data) {
+                data = data.toString();
+                if (callback) {
+                    callback(data);
+                } else {
+                    this.onOutputChannel(data);
+                }
+            } else if (error) {
+                error = new Error(error);
+                if (callback) {
+                    callback(undefined, error);
+                } else {
+                    this.onOutputChannel(error);
+                }
+            } else {
+                if (callback) {
+                    callback(undefined, undefined, end);
+                } else {
+                    this.onOutputChannel(end);
+                }
+            }
         };
-        this.onOutputChannel("EXEC: " + command);
+        options = options ? options : {};
+        options['shell'] = options.shell ? options.shell : this.getShell(ShellTypeEnum.system).command;
+        options['env'] = this.env.outputChannel;
+
+        if (options.printCmd) {
+            this.onOutputChannel("EXEC: " + command);
+        }
+
+        if (options?.isWait) {
+            return spawnSync(command, options);
+        }
 
         let cmd = spawn(command, options);
 
+        // Data
         cmd.stdout.on('data', result => {
-            this.onOutputChannel(result);
+            processResult(result);
         });
-        cmd.stdout.on('end', (result: any) => {
-            this.onOutputChannel(result);
-        });
+        
 
+        // Error
         cmd.on('error', error => {
-            this.onOutputChannel(error);
+            processResult(undefined, error);
         });
         cmd.on('uncaughtException', error => {
-            this.onOutputChannel(error);
+            processResult(undefined, error);
         });
         cmd.stderr.on('data', (error: any) => {
-            this.onOutputChannel(error);
+            processResult(undefined, error);
         });
 
-
+        // End, Close and Exit
+        cmd.stdout.on('end', (result: any) => {
+            processResult(undefined, undefined, result);
+        });
         cmd.on('close', (code, signal) => {
-            this.onOutputChannel({ code: code, signal: signal });
+            processResult(undefined, undefined, { code: code, signal: signal });
         });
         cmd.on('exit', (code) => {
-            this.onOutputChannel({ code: code });
+            processResult(undefined, undefined, { code: code });
             // at exit explicitly kill exited task
             cmd.kill('SIGINT');
         });
@@ -228,7 +297,8 @@ export class ConsoleExtend {
                         this.terminals.bash = window.createTerminal({
                             cwd: cwd,
                             name: shell.name,
-                            shellPath: shell.command
+                            shellPath: shell.command,
+                            env: this.env.terminal
                         });
                     }
                     this._terminal = this.terminals.bash;
@@ -238,7 +308,8 @@ export class ConsoleExtend {
                         this.terminals.cmd = window.createTerminal({
                             cwd: cwd,
                             name: shell.name,
-                            shellPath: shell.command
+                            shellPath: shell.command,
+                            env: this.env.terminal
                         });
                     }
                     this._terminal = this.terminals.cmd;
@@ -248,7 +319,8 @@ export class ConsoleExtend {
                         this.terminals.osxTerminal = window.createTerminal({
                             cwd: cwd,
                             name: shell.name,
-                            shellPath: shell.command
+                            shellPath: shell.command,
+                            env: this.env.terminal
                         });
                     }
                     this._terminal = this.terminals.osxTerminal;
@@ -270,7 +342,7 @@ export class ConsoleExtend {
         }
     }
 
-    execTerminal(command: string, cwd?: string, shellType?: ShellTypeEnum) {
+    execTerminal(command: string,  cwd?: string, shellType?: ShellTypeEnum) {
         if (command && command.length > 0) {
             if (shellType) {
                 this.setTerminal(shellType, cwd);
@@ -282,11 +354,12 @@ export class ConsoleExtend {
     }
 
     createTerminal(options: TerminalOptions): Terminal {
-        if (!options.shellPath) {
-            options = { shellPath: this.getShell(ShellTypeEnum.system).command };
-        }
-
-        options['name'] = this.extensionId + ': ' + options?.name;
+        options['name'] = this.name + ': ' + options?.name;
+        options['shellPath'] = !options.shellPath
+            ? this.getShell(ShellTypeEnum.system).command
+            : options.shellPath;
+        options['env'] = !options.env ? this.env.terminal : options.env;
+        
         let term = window.terminals.find(t => t.name === options?.name);
         if (term) {
             return term;
@@ -313,7 +386,7 @@ export class ConsoleExtend {
 
             if (base && base.length > 0) {
                 base += ' ' + args;
-                let consoleProcess = exec(base);
+                let consoleProcess = exec(base, {env: this.env.outputChannel});
                 consoleProcess.on('error', error => {
                     this.onOutputChannel(error);
                 });
@@ -327,5 +400,35 @@ export class ConsoleExtend {
         } else {
             this.onOutputChannel('External Terminal: Invalid Path = ' + cwd);
         }
+    }
+
+    runCommandPowerShellAsAdmin(command: string, cwd?: string) {
+        let adminCmd = `Start-Process powershell -verb runas -ArgumentList "${command}"`;
+        this.execOutputChannel(adminCmd, {cwd: cwd}, (undefined, undefine, isEnd) => {
+            if (isEnd) {
+                LibStatic.notify("Please Restart VSCode");
+            }
+        });
+    }
+
+    findCommandPath(command: string): string {
+        if (command && command.length > 0) {
+            let execCmd = "";
+            switch (LibStatic.getPlatform()) {
+                case PlatformTypeEnum.linux:
+                    execCmd = `which ${command}`;
+                    break;
+                case PlatformTypeEnum.windows:
+                    execCmd = `where ${command}`;
+                    break;
+                default:
+                    return '';
+            }
+            let result = this.execOutputChannel(execCmd, {isWait: true, shell: this.getShell(ShellTypeEnum.system).command});
+            if (result?.stdout) {
+                return result.stdout?.toString().trim();
+            }
+        }
+        return '';
     }
 }

@@ -2,8 +2,9 @@ import { SqliteExtend } from './sqlite-extend';
 import { SshExtend } from './ssh-extend';
 import { ConsoleExtend } from './console-extend';
 import { LibStatic } from './lib-static';
-import { IRegVsCmd, IExtensionInfo } from './interface/lib-interface';
+import { IRegVsCmd, IExtensionInfo, ICallable } from './interface/lib-interface';
 import { commands, ExtensionContext, extensions, workspace } from 'vscode';
+import { NotifyEnum } from './enum/lib-enum';
 
 export class Lib {
     consoleExtend: ConsoleExtend;
@@ -12,9 +13,10 @@ export class Lib {
 
     constructor(
         private context: ExtensionContext,
-        public extensionId: string
+        public extensionId: string,
+        public consoleName: string
     ) {
-        this.consoleExtend = new ConsoleExtend(this.extensionId);
+        this.consoleExtend = new ConsoleExtend(this.consoleName);
         this.sshExtend = new SshExtend(this.consoleExtend);
         this.sqliteExtend = new SqliteExtend(this.context);
     }
@@ -56,5 +58,35 @@ export class Lib {
             let register = commands.registerCommand(value.command, value.callback, value.thisArg);
             this.context.subscriptions.push(register);
         });
+    }
+
+    /**
+     * Run Method on try catch
+     * @param caller
+     */
+    async run<T>(callerInfo: ICallable): Promise<T> {
+        let result: T;
+        try {
+            callerInfo.args = callerInfo.args ? callerInfo.args : [];
+            result = await callerInfo.callback.apply<any, any[], any>(callerInfo.thisArg, callerInfo.args);
+        } catch (error) {
+            throw new Error(error);
+        }
+        return result;
+    }
+
+    /**
+     * Run Method on try catch sync
+     * @param caller
+     */
+    runSync<T>(callerInfo: ICallable): T {
+        let result: T;
+        try {
+            callerInfo.args = callerInfo.args ? callerInfo.args : [];
+            result = callerInfo.callback.apply<any, any[], any>(callerInfo.thisArg, callerInfo.args);
+        } catch (error) {
+            throw new Error(error);
+        }
+        return result;
     }
 }
