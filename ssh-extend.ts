@@ -17,10 +17,10 @@ export class SshExtend {
         if (config !== this._config) {
             this.closeConnection();
         }
-        this._config = config;
+        this._config = config ? LibStatic.copyJsonData(config) : {};
     }
     get config(): Config {
-        return this._config;
+        return LibStatic.copyJsonData(this._config);
     }
 
     private isValidConfig(): boolean {
@@ -56,7 +56,7 @@ export class SshExtend {
     closeConnection() {
         if (this.nodessh.isConnected()) {
             this.nodessh.connection?.end();
-            this.config = {};
+            this._config = {};
         }
     }
 
