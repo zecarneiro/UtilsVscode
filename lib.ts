@@ -5,11 +5,13 @@ import { LibStatic } from './lib-static';
 import { IRegVsCmd, IExtensionInfo, ICallable } from './interface/lib-interface';
 import { commands, ExtensionContext, extensions, workspace } from 'vscode';
 import { NotifyEnum } from './enum/lib-enum';
+import { JavaExtend } from './java-extend';
 
 export class Lib {
     consoleExtend: ConsoleExtend;
     sshExtend: SshExtend;
     sqliteExtend: SqliteExtend;
+    javaExtend: JavaExtend;
 
     constructor(
         private context: ExtensionContext,
@@ -19,6 +21,7 @@ export class Lib {
         this.consoleExtend = new ConsoleExtend(this.consoleName);
         this.sshExtend = new SshExtend(this.consoleExtend);
         this.sqliteExtend = new SqliteExtend(this.context);
+        this.javaExtend = new JavaExtend(this.consoleExtend);
     }
 
     private _extensionData: IExtensionInfo | undefined;

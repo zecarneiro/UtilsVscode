@@ -31,6 +31,12 @@ export interface ICallable {
     args?: any[],
     thisArg?: any
 }
+export interface IFileInfo {
+    filename: string | undefined,
+    basename: string,
+    dirname: string,
+    extension: string
+}
 
 export class IExtensionInfo {
     author: string = '';

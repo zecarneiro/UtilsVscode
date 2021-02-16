@@ -16,10 +16,11 @@ import {
     WorkspaceFolder
 } from "vscode";
 import { NotifyEnum, PlatformTypeEnum } from "./enum/lib-enum";
-import { IBase64, IProcessing, IStatusBar, IStringReplace } from "./interface/lib-interface";
+import { IBase64, IFileInfo, IProcessing, IStatusBar, IStringReplace } from "./interface/lib-interface";
 import * as fse from 'fs-extra';
 import * as os from 'os';
 import * as moment from 'moment';
+import * as path from 'path';
 import { ActivityBarProvider } from "./activity-bar-provider";
 import { IActivityBarProvider } from "./interface/activity-bar-provider-interface";
 
@@ -161,6 +162,23 @@ export class LibStatic {
             return (isDir) ? fse.statSync(file).isDirectory() : fse.statSync(file).isFile();
         }
         return false;
+    }
+    static getActiveFileNameDocument(file?: string): IFileInfo {
+        let response: IFileInfo = {
+            filename: file,
+            basename: '',
+            dirname: '',
+            extension: ''
+        };
+
+        file = file && file.length > 0 ? file : window.activeTextEditor?.document.fileName;
+        if (file && file.length > 0) {
+            response.filename = file;
+            response.basename = path.basename(file);
+            response.dirname = path.dirname(file);
+            response.extension = path.extname(file);
+        }
+        return response;
     }
     static getWorkspaceDir(name?: string): WorkspaceFolder | WorkspaceFolder[] | undefined {
         if (workspace.workspaceFolders) {
