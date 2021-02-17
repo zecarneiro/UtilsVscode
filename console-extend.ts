@@ -402,6 +402,9 @@ export class ConsoleExtend {
         }
     }
 
+    /**============================================
+     *! Others
+     *=============================================**/
     runCommandPowerShellAsAdmin(command: string, cwd?: string) {
         let adminCmd = `Start-Process powershell -verb runas -ArgumentList "${command}"`;
         this.execOutputChannel(adminCmd, {cwd: cwd}, (undefined, undefine, isEnd) => {
@@ -430,5 +433,54 @@ export class ConsoleExtend {
             }
         }
         return '';
+    }
+
+    sequenceCommands(commands: string[], shellType: ShellTypeEnum): string {
+        let commandSequency = '';
+        let separatorCmd = '';
+        const separators = {
+            win: '&&',
+            linux: '&&',
+            osx: '&&'
+        };
+
+        if (shellType === ShellTypeEnum.system) {
+            switch (LibStatic.getPlatform()) {
+                case PlatformTypeEnum.windows:
+                    separatorCmd = separators.win;
+                    break;
+                case PlatformTypeEnum.linux:
+                    separatorCmd = separators.linux;
+                    break;
+                case PlatformTypeEnum.osx:
+                    separatorCmd = separators.osx;
+                    break;
+                default:
+                    throw new Error("Ivalid Platform");
+            }
+        } else {
+            switch (shellType) {
+                case ShellTypeEnum.cmd | ShellTypeEnum.powershell:
+                    separatorCmd = separators.win;
+                    break;
+                case ShellTypeEnum.bash:
+                    separatorCmd = separators.linux;
+                    break;
+                case ShellTypeEnum.osxTerminal:
+                    separatorCmd = separators.osx;
+                    break;
+                default:
+                    throw new Error("Ivalid Shell");  
+            }
+        }
+
+        commands.forEach(cmd => {
+            if (commandSequency.length === 0) {
+                commandSequency = cmd;
+            } else {
+                commandSequency += ` ${separatorCmd} ${cmd}`;
+            }
+        });
+        return commandSequency;
     }
 }
