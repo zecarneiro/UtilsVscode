@@ -1,13 +1,18 @@
-import { Command } from "vscode";
+import { Command, TreeItem, TreeItemCollapsibleState } from "vscode";
 
 export interface IStringReplace {
     search: string;
     toReplace: string;
 }
+export interface ICaller {
+    caller: (...args: any[]) => any,
+    isSync?: boolean,
+    args?: any[],
+    thisArg?: any
+}
 export interface IRegVsCmd {
     command: string;
-    callback: (...args: any[]) => any;
-    thisArg?: any;
+    callback?: ICaller
 }
 export interface IResponse<T> {
     data: T,
@@ -26,18 +31,23 @@ export interface IBase64 {
     base: string,
     url: string
 }
-export interface ICallable {
-    callback: (...args: any[]) => any;
-    args?: any[],
-    thisArg?: any
-}
 export interface IFileInfo {
     filename: string | undefined,
     basename: string,
     dirname: string,
     extension: string
 }
-
+export interface ITreeItemExtend {
+    treeItem: TreeItem,
+    callback?: ICaller,
+    hasChildren?: boolean;
+}
+export interface ITreeItemWithChildren {
+    label: string;
+    collapsibleState?: TreeItemCollapsibleState;
+    children?: ITreeItemExtend[];
+    hasChildren?: boolean;
+}
 export class IExtensionInfo {
     author: string = '';
     publisher: string = '';

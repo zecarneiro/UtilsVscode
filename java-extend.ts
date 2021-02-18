@@ -1,7 +1,7 @@
+import { IJavaExtend } from './interface/java-extend-inteface';
 import { QuickPickItem } from 'vscode';
 import { ConsoleExtend } from "./console-extend";
 import { ShellTypeEnum } from "./enum/console-extends-enum";
-import { IFileInfo } from "./interface/lib-interface";
 import { LibStatic } from "./lib-static";
 
 export class JavaExtend {
@@ -12,7 +12,7 @@ export class JavaExtend {
     ) {
     }
 
-    async findPomDir(directory: string, isInit: boolean): Promise<string> {
+    async findPomDir(directory: string, isInit?: boolean): Promise<string> {
         let items: QuickPickItem[] = [];
         const separator = LibStatic.resolvePath<string>('/');
         const length = directory.split(separator).length;
@@ -33,12 +33,27 @@ export class JavaExtend {
         return '';
     }
 
-    runTest(fileTest: IFileInfo, pomDir: string | undefined, method?: string) {
-        if (fileTest.basename && fileTest.basename.length > 0 && LibStatic.fileExist(fileTest.dirname, true)) {
-            method = method ? `#${method}` : "";
-            const className = fileTest.basename.split('.').slice(0, -1).join('.');
-            const command = `${this.mvnCmd} -Dtest=${className}${method} test`;
-            this.consoleExtend.execTerminal(command, pomDir, ShellTypeEnum.system);
+    async runTest(data: IJavaExtend, shellType: ShellTypeEnum) {
+        let command = this.mvnCmd;
+
+        // Insert class and method
+        if (data.file.basename && data.file.basename.length > 0 && LibStatic.fileExist(data.file.dirname, true)) {
+            const method = data.method ? `#${data.method}` : "";
+            const className = data.file.basename.split('.').slice(0, -1).join('.');
+            command += ` -Dtest=${className}${method}`;
+            if (!data.pomDir) {
+                data.pomDir = await this.findPomDir(data.file.dirname);
+            }
         }
+
+        // Insert others arguments
+        if (data.otherArgs && data.otherArgs.length > 0) {
+            data.otherArgs.forEach(arg => {
+                command += ` ${arg}`;
+            });
+        }
+
+        // Run
+        this.consoleExtend.execTerminal(`${command} test`, data.pomDir, shellType);
     }
 }

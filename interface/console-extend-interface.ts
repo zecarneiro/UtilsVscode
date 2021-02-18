@@ -6,7 +6,8 @@ export interface IPrintOutputChannel {
     hasSeparator?: boolean,
     title?: string,
     isClear?: boolean,
-    encoding?: string
+    encoding?: string,
+    hasDate?: boolean
 }
 export interface ITerminals {
     cmd: Terminal | undefined,

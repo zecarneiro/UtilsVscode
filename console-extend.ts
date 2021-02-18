@@ -240,16 +240,22 @@ export class ConsoleExtend {
             config.encoding = 'utf8';
         }
 
-        if (config.hasSeparator) {
-            data = LibStatic.getMessageSeparator(config.title) + data;
-            config.isNewLine = false;
+        if (data !== undefined && data !== null && typeof data !== "string") {
+            data = JSON.stringify(data, null, spaceObj);
         }
+
+        // Clear
         if (config.isClear) {
             this.outputChannel.clear();
         }
 
-        if (data !== undefined && data !== null && typeof data !== "string") {
-            data = JSON.stringify(data, null, spaceObj);
+        // Print separator
+        if (config.hasSeparator) {
+            this.outputChannel.append(LibStatic.getMessageSeparator(config.title));
+            config.isNewLine = false;
+        } else if (config.hasDate) {
+            this.outputChannel.append(`${LibStatic.formatDate()} - `);
+            config.isNewLine = false;
         }
 
         if (config.isNewLine) {

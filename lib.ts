@@ -2,9 +2,8 @@ import { SqliteExtend } from './sqlite-extend';
 import { SshExtend } from './ssh-extend';
 import { ConsoleExtend } from './console-extend';
 import { LibStatic } from './lib-static';
-import { IRegVsCmd, IExtensionInfo, ICallable } from './interface/lib-interface';
-import { commands, ExtensionContext, extensions, workspace } from 'vscode';
-import { NotifyEnum } from './enum/lib-enum';
+import { IRegVsCmd, IExtensionInfo, ITreeItemWithChildren, ITreeItemExtend } from './interface/lib-interface';
+import { commands, ExtensionContext, extensions, workspace, TreeItem } from 'vscode';
 import { JavaExtend } from './java-extend';
 
 export class Lib {
@@ -14,13 +13,13 @@ export class Lib {
     javaExtend: JavaExtend;
 
     constructor(
-        private context: ExtensionContext,
+        public context: ExtensionContext,
         public extensionId: string,
-        public consoleName: string
+        public objectName: string
     ) {
-        this.consoleExtend = new ConsoleExtend(this.consoleName);
+        this.consoleExtend = new ConsoleExtend(this.objectName);
         this.sshExtend = new SshExtend(this.consoleExtend);
-        this.sqliteExtend = new SqliteExtend(this.context);
+        this.sqliteExtend = new SqliteExtend(this);
         this.javaExtend = new JavaExtend(this.consoleExtend);
     }
 
@@ -45,6 +44,39 @@ export class Lib {
         }
         return LibStatic.copyJsonData(this._extensionData);
     }
+    
+    createActivityBar(data: ITreeItemWithChildren[] | ITreeItemExtend[], id: string) {
+        let activityBarData: any[] = [];
+        let vsCmd: IRegVsCmd[] = [];
+        let treeItem = (dataTreeItem: ITreeItemExtend[] | undefined): TreeItem[] => {
+            let treeItem: TreeItem[] = [];
+            if (dataTreeItem) {
+                dataTreeItem.forEach(val => {
+                    treeItem.push(val.treeItem);
+                    vsCmd.push({
+                        callback: val.callback,
+                        command: val.treeItem.command ? val.treeItem.command.command : '',
+                    });
+                });
+            }
+            return treeItem;
+        };
+
+        for (let i = 0; i < data.length; ++i) {
+            if (data[i].hasChildren) {
+                const dataWithChildren = data[i] as ITreeItemWithChildren;
+                activityBarData.push({
+                    label: dataWithChildren.label,
+                    children: treeItem(dataWithChildren.children)
+                });
+            } else {
+                const dataWithoutChildren = data[i] as ITreeItemExtend;
+                activityBarData = activityBarData.concat(treeItem([dataWithoutChildren]));
+            }
+        }
+        LibStatic.createActivityBar(activityBarData, id);
+        this.registerVscodeCommand(vsCmd);
+    }
 
     getStorage<T = any>(key: string, defaultValue?: T): T {
         let data = defaultValue
@@ -58,38 +90,27 @@ export class Lib {
 
     registerVscodeCommand(data: IRegVsCmd[]) {
         data.forEach(value => {
-            let register = commands.registerCommand(value.command, value.callback, value.thisArg);
-            this.context.subscriptions.push(register);
+            if (value.callback) {
+                let callback = () => {
+                    if (value.callback) {
+                        if (value.callback.isSync) {
+                            LibStatic.runSync(value.callback.caller, value.callback.args, value.callback.thisArg);
+                        } else {
+                            LibStatic.run(value.callback.caller, value.callback.args, value.callback.thisArg);
+                        }
+                    }
+                };
+                let register = commands.registerCommand(value.command, callback);
+                this.context.subscriptions.push(register);
+            }
         });
     }
 
-    /**
-     * Run Method on try catch
-     * @param caller
-     */
-    async run<T>(callerInfo: ICallable): Promise<T> {
-        let result: T;
-        try {
-            callerInfo.args = callerInfo.args ? callerInfo.args : [];
-            result = await callerInfo.callback.apply<any, any[], any>(callerInfo.thisArg, callerInfo.args);
-        } catch (error) {
-            throw new Error(error);
-        }
-        return result;
+    getCommandFormated(name: string): string {
+        return `${this.extensionData.name}.${name}`;
     }
 
-    /**
-     * Run Method on try catch sync
-     * @param caller
-     */
-    runSync<T>(callerInfo: ICallable): T {
-        let result: T;
-        try {
-            callerInfo.args = callerInfo.args ? callerInfo.args : [];
-            result = callerInfo.callback.apply<any, any[], any>(callerInfo.thisArg, callerInfo.args);
-        } catch (error) {
-            throw new Error(error);
-        }
-        return result;
+    getExtensionPath(): string {
+        return this.context.extensionPath;
     }
 }

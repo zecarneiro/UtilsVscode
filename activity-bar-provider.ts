@@ -3,17 +3,13 @@ import { IActivityBarProvider } from "./interface/activity-bar-provider-interfac
 
 export class ActivityBarProvider implements TreeDataProvider<any> {
     constructor(
-        private outline: IActivityBarProvider[] | TreeItem[],
-        private isAllCollapsed: boolean = true
+        private outline: IActivityBarProvider[] | TreeItem[]
     ) { }
 
     getTreeItem(item: any): TreeItem | Thenable<TreeItem> {
         if (item && item.children) {
-            let state = this.isAllCollapsed
-                ? TreeItemCollapsibleState.Collapsed
-                : item.children && item.children.length > 0
-                    ? TreeItemCollapsibleState.Expanded
-                    : TreeItemCollapsibleState.Collapsed;
+            const state: TreeItemCollapsibleState = item.collapsibleState
+                ? item.collapsibleState : TreeItemCollapsibleState.Collapsed;
             return new TreeItem(item.label, state);
         }
         return item;

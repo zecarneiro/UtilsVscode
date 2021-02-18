@@ -1,7 +1,6 @@
 import { ConsoleExtend } from './console-extend';
 import {
     commands,
-    ExtensionContext,
     InputBoxOptions,
     OpenDialogOptions,
     OutputChannel,
@@ -21,8 +20,8 @@ import * as fse from 'fs-extra';
 import * as os from 'os';
 import * as moment from 'moment';
 import * as path from 'path';
-import { ActivityBarProvider } from "./activity-bar-provider";
-import { IActivityBarProvider } from "./interface/activity-bar-provider-interface";
+import { IActivityBarProvider } from './interface/activity-bar-provider-interface';
+import { ActivityBarProvider } from './activity-bar-provider';
 
 export class LibStatic {
     /**============================================
@@ -77,8 +76,8 @@ export class LibStatic {
         let response = await window.showInputBox(inputBoxOptions);
         return response;
     }
-    static createActivityBar(data: IActivityBarProvider[] | TreeItem[], id: string, isAllCollapsed?: boolean) {
-        let activityBar: ActivityBarProvider = new ActivityBarProvider(data, isAllCollapsed);
+    static createActivityBar(data: IActivityBarProvider[] | TreeItem[], id: string) {
+        let activityBar: ActivityBarProvider = new ActivityBarProvider(data);
         activityBar.create(id);
     }
     static createStatusBar(options: IStatusBar) {
@@ -198,9 +197,6 @@ export class LibStatic {
             url: `data:${type};base64,${base}`
         };
     }
-    static getExtensionPath(context: ExtensionContext): string {
-        return context.extensionPath;
-    }
     static getVscodeStorageStateFile(): string {
         let homeDir: string = os.homedir();
         let stateStorageFile: string = 'Code/User/globalStorage/state.vscdb';
@@ -295,13 +291,14 @@ export class LibStatic {
         return data;
     }
     static getMessageSeparator(callerName?: string): string {
-        let dateVal = LibStatic.formatDate(new Date);
+        let dateVal = LibStatic.formatDate();
         let message = (callerName && callerName.length > 0)
             ? `\n------ ${callerName}: ${dateVal} ------\n`
             : `\n------ ${dateVal} ------\n`;
         return message;
     }
-    static formatDate(dateVal: Date, format?: string): string {
+    static formatDate(dateVal?: Date, format?: string): string {
+        dateVal = dateVal ? dateVal : new Date;
         format = format ? format : 'DD-MMM-YYYY HH:mm:ss';
         return (moment(dateVal)).format(format);
     }
@@ -325,6 +322,36 @@ export class LibStatic {
     static isAsyncFunction(caller: any): boolean {
         const asyncFunction = (async () => {}).constructor;
         return caller instanceof asyncFunction;
+    }
+
+    /**
+     * Run Method on try catch
+     * @param caller
+     */
+    static async run<T>(caller: (...args: any[]) => any, args?: any[], thisArg?: any): Promise<T> {
+        let result: T;
+        try {
+            args = args ? args : [];
+            result = await caller.apply<any, any[], any>(thisArg, args);
+        } catch (error) {
+            throw new Error(error);
+        }
+        return result;
+    }
+
+    /**
+     * Run Method on try catch sync
+     * @param caller
+     */
+    static runSync<T>(caller: (...args: any[]) => any, args?: any[], thisArg?: any): T {
+        let result: T;
+        try {
+            args = args ? args : [];
+            result = caller.apply<any, any[], any>(thisArg, args);
+        } catch (error) {
+            throw new Error(error);
+        }
+        return result;
     }
     /*=============== END OF SECTION ==============*/
 }

@@ -1,19 +1,19 @@
-import { ExtensionContext } from 'vscode';
 import { LibStatic } from './lib-static';
 import { PlatformTypeEnum } from './enum/lib-enum';
 import { OutputFormatEnum } from './enum/sqlite-extend-enum';
 import { IResponse } from './interface/lib-interface';
 import { spawn } from 'child_process';
 import * as os from 'os';
+import { Lib } from './lib';
 
 export class SqliteExtend {
     private binariesPath: string;
     private sqliteCommand: string = '';
 
     constructor(
-        private context: ExtensionContext
+        private lib: Lib
     ) {
-        this.binariesPath = `${LibStatic.getExtensionPath(this.context)}/utils/bin/sqlite3`;
+        this.binariesPath = `${this.lib.getExtensionPath()}/utils/bin/sqlite3`;
         switch (LibStatic.getPlatform()) {
             case PlatformTypeEnum.linux:
                 this.sqliteCommand = `${this.binariesPath}/sqlite3-linux-x86`;
