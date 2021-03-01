@@ -48,6 +48,10 @@ export interface ITreeItemWithChildren {
     children?: ITreeItemExtend[];
     hasChildren?: boolean;
 }
+export interface IRunCmd {
+    cmd: string,
+    cwd?: string
+}
 export class IExtensionInfo {
     author: string = '';
     publisher: string = '';

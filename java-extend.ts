@@ -36,6 +36,14 @@ export class JavaExtend {
     async runTest(data: IJavaExtend, shellType: ShellTypeEnum) {
         let command = this.mvnCmd;
 
+        if (data.isFailIfNoTests !== true) {
+            command += ` -DfailIfNoTests=false`;
+        }
+
+        if (data.isClean) {
+            command += ` clean`;
+        }
+
         // Insert class and method
         if (data.file.basename && data.file.basename.length > 0 && LibStatic.fileExist(data.file.dirname, true)) {
             const method = data.method ? `#${data.method}` : "";
@@ -54,6 +62,11 @@ export class JavaExtend {
         }
 
         // Run
+        if (data.runCmdBeforeTest && data.runCmdBeforeTest.length > 0) {
+            data.runCmdBeforeTest.forEach(command => {
+                this.consoleExtend.execTerminal(command.cmd, command.cwd, shellType);
+            });
+        }
         this.consoleExtend.execTerminal(`${command} test`, data.pomDir, shellType);
     }
 }
