@@ -49,17 +49,17 @@ export class Lib {
         let activityBarData: any[] = [];
         let vsCmd: IRegVsCmd[] = [];
         let treeItem = (dataTreeItem: ITreeItemExtend[] | undefined): TreeItem[] => {
-            let treeItem: TreeItem[] = [];
+            let newDataTree: TreeItem[] = [];
             if (dataTreeItem) {
                 dataTreeItem.forEach(val => {
-                    treeItem.push(val.treeItem);
+                    newDataTree.push(val.treeItem);
                     vsCmd.push({
                         callback: val.callback,
                         command: val.treeItem.command ? val.treeItem.command.command : '',
                     });
                 });
             }
-            return treeItem;
+            return newDataTree;
         };
 
         for (let i = 0; i < data.length; ++i) {
@@ -80,7 +80,7 @@ export class Lib {
 
     getStorage<T = any>(key: string, defaultValue?: T): T {
         let data = defaultValue
-            ? this.context.globalState.get<T>(key, defaultValue) as T
+            ? this.context.globalState.get<T>(key, defaultValue)
             : this.context.globalState.get<T>(key) as T;
         return data ? LibStatic.copyJsonData(data) : data;
     }

@@ -1,6 +1,6 @@
 import { LibStatic } from './lib-static';
 import { ConsoleExtend } from './console-extend';
-import { Config, NodeSSH, SSHExecCommandOptions } from "node-ssh";
+import { Config, NodeSSH } from "node-ssh";
 import { SshFunctionsMsgEnum } from "./enum/ssh-extend-enum";
 import { IResponse } from "./interface/lib-interface";
 import { IExecCommand, IExecCommandResponse } from './interface/ssh-extend-interface';
@@ -67,10 +67,6 @@ export class SshExtend {
 
         if (this.nodessh.isConnected()) {
             LibStatic.getMessageSeparator('SSH FUNCTIONS');
-            let options: SSHExecCommandOptions = {
-                cwd: cwd,
-
-            };
             this.nodessh.exec(cmd, args, {
                 cwd: cwd,
                 onStderr: (data) => { callback(undefined, data); },

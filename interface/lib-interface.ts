@@ -25,7 +25,7 @@ export interface IProcessing {
 export interface IStatusBar {
     text: string,
     command: string | Command | undefined,
-    tooltip?: string | undefined
+    tooltip?: string
 }
 export interface IBase64 {
     base: string,

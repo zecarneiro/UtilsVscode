@@ -1,6 +1,7 @@
 import { ConsoleExtend } from './console-extend';
 import {
     commands,
+    extensions,
     InputBoxOptions,
     OpenDialogOptions,
     OutputChannel,
@@ -55,11 +56,11 @@ export class LibStatic {
         webViewPanel.webview.html = data;
     }
     static showFilesMD(file: string) {
-        let fileUri = this.resolvePath(file, true) as Uri;
+        let fileUri = LibStatic.resolvePath<Uri>(file, true);
         commands.executeCommand("markdown.showPreview", fileUri);
     }
     static showTextDocument(file: string) {
-        let fileUri: Uri = this.resolvePath(file, true) as Uri;
+        let fileUri: Uri = LibStatic.resolvePath<Uri>(file, true);
         workspace.openTextDocument(fileUri).then(doc => {
             window.showTextDocument(doc);
         });
@@ -139,8 +140,8 @@ export class LibStatic {
      *  GET_BASE_64_FILE
      *  GET_EXTENSION_PATH
      *=============================================**/
-    static resolvePath<T extends string | Uri>(path: string, isGetUri?: boolean): T {
-        let data = isGetUri ? Uri.file(path) : Uri.file(path).fsPath;
+    static resolvePath<T extends string | Uri>(strPath: string, isGetUri?: boolean): T {
+        let data = isGetUri ? Uri.file(strPath) : Uri.file(strPath).fsPath;
         return data as T;
     }
     static readDocument(file: string): string {
@@ -152,7 +153,7 @@ export class LibStatic {
     }
     static createTempFile(fileName: string, data?: any) {
         let tempdir = os.tmpdir();
-        let temFile = LibStatic.resolvePath(`${tempdir}/${fileName}`) as string;
+        let temFile = LibStatic.resolvePath<string>(`${tempdir}/${fileName}`);
         LibStatic.writeDocument(temFile, data);
         return temFile;
     }
@@ -190,7 +191,7 @@ export class LibStatic {
         return undefined;
     }
     static getBase64File(file: string, type?: string): IBase64 {
-        file = LibStatic.resolvePath(file) as string;
+        file = LibStatic.resolvePath<string>(file);
         let base = fse.readFileSync(file)?.toString('base64');
         return {
             base: base,
@@ -308,12 +309,20 @@ export class LibStatic {
         }
         return "";
     }
+    static isExtensionInstalled(id: string): boolean {
+        return extensions.getExtension(id) ? true : false;
+    }
     static installUninstallExtensions(extensionsId: string[], console: ConsoleExtend, isUninstall?: boolean) {
         let commandExt = (isUninstall) ? 'code --uninstall-extension {0}' : 'code --install-extension {0}';
+
+        LibStatic.notify("Install/Uninstall extensions...", NotifyEnum.default);
         extensionsId.forEach(id => {
-            const stringsReplace: IStringReplace[] = [{ search: '{0}', toReplace: id }];
-            const cmd = LibStatic.stringReplaceAll(commandExt, stringsReplace);
-            console.execTerminal(cmd);
+            const isInstall = LibStatic.isExtensionInstalled(id);
+            if ((!isUninstall && !isInstall) || (isUninstall && isInstall)) {
+                const stringsReplace: IStringReplace[] = [{ search: '{0}', toReplace: id }];
+                const cmd = LibStatic.stringReplaceAll(commandExt, stringsReplace);
+                console.execTerminal(cmd);
+            }
         });
     }
     static async runVscodeCommand<T>(command: string, ...rest: any[]): Promise<T | undefined> {
@@ -352,6 +361,19 @@ export class LibStatic {
             throw new Error(error);
         }
         return result;
+    }
+
+    static sleep(ms: number): Promise<void> {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    static isJsonParsable(jsonStr: string): boolean {
+        try {
+            JSON.parse(jsonStr);
+        } catch (e) {
+            return false;
+        }
+        return true;
     }
     /*=============== END OF SECTION ==============*/
 }

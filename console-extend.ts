@@ -1,5 +1,5 @@
 import { LibStatic } from './lib-static';
-import { OutputChannel, Terminal, TerminalOptions, Uri, window } from "vscode";
+import { OutputChannel, Terminal, TerminalOptions, window } from "vscode";
 import { exec, spawn, SpawnOptionsWithoutStdio, spawnSync, SpawnSyncReturns } from 'child_process';
 import { IPrintOutputChannel, ITerminals, IShellCmd, IEnvVariable } from './interface/console-extend-interface';
 import { NotifyEnum, PlatformTypeEnum } from './enum/lib-enum';
@@ -28,12 +28,12 @@ export class ConsoleExtend {
     deleteEnv(key?: string) {
         let data: IEnvVariable = {outputChannel: {}, terminal: {}};
         if (key) {
-            for (var keyData in this.env.outputChannel) {
+            for (let keyData in this.env.outputChannel) {
                 if (key !== keyData) {
                     data.outputChannel[keyData] = this.env.outputChannel[keyData];
                 }
             }
-            for (var keyData in this.env.terminal) {
+            for (let keyData in this.env.terminal) {
                 if (key !== keyData) {
                     data.terminal[keyData] = this.env.terminal[keyData];
                 }
@@ -159,7 +159,7 @@ export class ConsoleExtend {
         if (!this._outputChannel) {
             this._outputChannel = window.createOutputChannel(this.name);
         }
-        return this._outputChannel as OutputChannel;
+        return this._outputChannel;
     }
 
     execOutputChannel(command: string, options?: SpawnOptionsWithoutStdio & {isWait?: boolean, printCmd?: boolean}, callback?: (output?: any, error?: Error, end?: any) => void): SpawnSyncReturns<Buffer> | undefined {
@@ -413,7 +413,7 @@ export class ConsoleExtend {
      *=============================================**/
     runCommandPowerShellAsAdmin(command: string, cwd?: string) {
         let adminCmd = `Start-Process powershell -verb runas -ArgumentList "${command}"`;
-        this.execOutputChannel(adminCmd, {cwd: cwd}, (undefined, undefine, isEnd) => {
+        this.execOutputChannel(adminCmd, {cwd: cwd}, (output, error, isEnd) => {
             if (isEnd) {
                 LibStatic.notify("Please Restart VSCode");
             }

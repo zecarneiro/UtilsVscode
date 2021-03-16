@@ -63,8 +63,8 @@ export class JavaExtend {
 
         // Run
         if (data.runCmdBeforeTest && data.runCmdBeforeTest.length > 0) {
-            data.runCmdBeforeTest.forEach(command => {
-                this.consoleExtend.execTerminal(command.cmd, command.cwd, shellType);
+            data.runCmdBeforeTest.forEach(cmd => {
+                this.consoleExtend.execTerminal(cmd.cmd, cmd.cwd, shellType);
             });
         }
         this.consoleExtend.execTerminal(`${command} test`, data.pomDir, shellType);

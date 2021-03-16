@@ -1,5 +1,5 @@
 import { LibStatic } from './lib-static';
-import { PlatformTypeEnum } from './enum/lib-enum';
+import { NotifyEnum, PlatformTypeEnum } from './enum/lib-enum';
 import { OutputFormatEnum } from './enum/sqlite-extend-enum';
 import { IResponse } from './interface/lib-interface';
 import { spawn } from 'child_process';
@@ -9,6 +9,8 @@ import { Lib } from './lib';
 export class SqliteExtend {
     private binariesPath: string;
     private sqliteCommand: string = '';
+    private readonly timeToSleep = 5000; // 5 sec
+    private readonly tryLength = 3; // try 3 times
 
     constructor(
         private lib: Lib
@@ -24,13 +26,13 @@ export class SqliteExtend {
             default:
                 break;
         }
-        this.sqliteCommand = LibStatic.resolvePath(this.sqliteCommand) as string;
+        this.sqliteCommand = LibStatic.resolvePath<string>(this.sqliteCommand);
     }
 
     private _file: string = '';
     set file(name: string) {
         if (name && name.length > 0 && name !== this._file) {
-            this._file = LibStatic.resolvePath(name) as string;
+            this._file = LibStatic.resolvePath<string>(name);
         }
     }
     get file(): string {
@@ -64,30 +66,28 @@ export class SqliteExtend {
         };
     }
 
-    exec(query: string, callback: (result: IResponse<any>, isClosed?: boolean) => void) {
-        let result: IResponse<any>;
+    exec<T>(query: string, callback: (result: IResponse<T>, isClosed?: boolean) => void) {
+        let result: IResponse<T>;
         let errorMessage = '';
         let args = [
             `-nullvalue`, `NULL`, // print NULL for null values
-            `-cmd`, `.mode tcl`
+            `-cmd`, `.mode ${this._outputFormat}`
         ];
 
         result = this.validateData();
         if (!result.error) {
             let childProcess = spawn(this.sqliteCommand, args, { stdio: ['pipe', "pipe", "pipe"] });
             childProcess.stdin.write(`.open '${this._file}'${os.EOL}`);
-            childProcess.stdin.write(`.mode ${LibStatic.getEnumValueName(this._outputFormat, OutputFormatEnum)}${os.EOL}`);
+            childProcess.stdin.write(`.mode ${this._outputFormat}${os.EOL}`);
             childProcess.stdin.end(query);
 
             childProcess.stdout.once('data', (data: any) => {
-                result.data = data.toString().trim();
-                if (result.data) {
-                    switch (this.outputFormat) {
-                        case OutputFormatEnum.json:
-                            result.data = LibStatic.stringToJson(result.data, false);
-                            break;
-                        default:
-                            break;
+                data = data.toString().trim();
+                if (this._outputFormat === OutputFormatEnum.json) {
+                    if (LibStatic.isJsonParsable(data)) {
+                        result.data = LibStatic.stringToJson(data, false);
+                    } else {
+                        LibStatic.notify("Expected JSON Format from database", NotifyEnum.error);
                     }
                 }
             });
