@@ -271,16 +271,17 @@ export class ConsoleExtend {
      *! Terminal
      *=============================================**/
     private _terminal: Terminal | undefined;
-    get terminal(): Terminal {
+    terminal(cwd?: string, shell?: ShellTypeEnum): Terminal {
         if (!this._terminal) {
-            this.setTerminal(ShellTypeEnum.system);
+            shell = shell ? shell : ShellTypeEnum.system;
+            this.setTerminal(shell, cwd);
         }
         return this._terminal as Terminal;
     }
 
     private changeDir(cwd?: string) {
         if (this._terminal && cwd && cwd.length > 0) {
-            this.terminal.sendText(`cd "${cwd}"`);
+            this.terminal().sendText(`cd "${cwd}"`);
         }
     }
 
@@ -354,8 +355,8 @@ export class ConsoleExtend {
                 this.setTerminal(shellType, cwd);
             }
             this.changeDir(cwd);
-            this.terminal.show(true);
-            this.terminal.sendText(command);
+            this.terminal().show(true);
+            this.terminal().sendText(command);
         }
     }
 
