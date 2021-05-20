@@ -10,16 +10,14 @@ export interface IPrintOutputChannel {
     hasDate?: boolean
 }
 export interface ITerminals {
-    cmd: Terminal | undefined,
+    powershell: Terminal | undefined,
     bash: Terminal | undefined,
     osxTerminal: Terminal | undefined
 }
 export interface IShellCmd {
     name: string,
     command: string,
-    type: ShellTypeEnum,
-    external: string,
-    externalArgs: string
+    type: ShellTypeEnum
 }
 export interface IEnvVariable {
     outputChannel: NodeJS.ProcessEnv,

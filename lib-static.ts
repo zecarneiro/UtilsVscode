@@ -144,11 +144,15 @@ export class LibStatic {
         let data = isGetUri ? Uri.file(strPath) : Uri.file(strPath).fsPath;
         return data as T;
     }
+    static writeJsonFile(file: string, data: any, spaces?: string | number) {
+        spaces = spaces ? spaces : 4;
+        fse.writeJsonSync(file, data, { encoding: 'utf8', flag: 'w', spaces: spaces });
+    }
     static readDocument(file: string): string {
         let data = fse.readFileSync(file, { encoding: 'utf8', flag: 'r' });
         return data.toString();
     }
-    static writeDocument(file: string, data: any) {
+    static writeDocument(file: string, data: any,) {
         fse.writeFileSync(file, data, { encoding: 'utf8', flag: 'w' });
     }
     static createTempFile(fileName: string, data?: any) {
@@ -162,6 +166,16 @@ export class LibStatic {
             return (isDir) ? fse.statSync(file).isDirectory() : fse.statSync(file).isFile();
         }
         return false;
+    }
+    static createDir(dir: string) {
+        if (!this.fileExist(dir, true)) {
+            fse.mkdirSync(dir, {recursive: true});
+        }
+    }
+    static copyDir(src: string, dest: string, overwrite: boolean, onlyCopyFilesInside?: boolean) {
+        if (LibStatic.fileExist(src, true)) {
+            fse.copySync(src, dest, {recursive: true, overwrite: overwrite});
+        }
     }
     static getActiveFileNameDocument(file?: string): IFileInfo {
         let response: IFileInfo = {
@@ -278,11 +292,12 @@ export class LibStatic {
     static readEnvVariable(variable: string): string | undefined {
         return process.env[variable] ? process.env[variable] : undefined;
     }
-    static stringToJson(data: any, isToString: boolean): any {
+    static stringToJson(data: any, isToString: boolean, space?: string | number | undefined): any {
         if (!isToString) {
             return JSON.parse(data as string);
         } else {
-            return JSON.stringify(data);
+            space = space ? space : 4;
+            return JSON.stringify(data, null, space);
         }
     }
     static stringReplaceAll(data: string, keysToReplace?: IStringReplace[]): string {

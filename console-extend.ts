@@ -1,23 +1,22 @@
 import { LibStatic } from './lib-static';
-import { OutputChannel, Terminal, TerminalOptions, window } from "vscode";
-import { exec, spawn, SpawnOptionsWithoutStdio, spawnSync, SpawnSyncReturns } from 'child_process';
-import { IPrintOutputChannel, ITerminals, IShellCmd, IEnvVariable } from './interface/console-extend-interface';
+import { Terminal, TerminalOptions, window, OutputChannel } from "vscode";
+import { exec, SpawnOptionsWithoutStdio, SpawnSyncReturns, spawnSync, spawn } from 'child_process';
+import { ITerminals, IShellCmd, IEnvVariable, IPrintOutputChannel } from './interface/console-extend-interface';
 import { NotifyEnum, PlatformTypeEnum } from './enum/lib-enum';
 import { ShellTypeEnum } from './enum/console-extends-enum';
 
 export class ConsoleExtend {
+    private directory = __dirname;
     private cwdKey = '{CWD}';
     private terminals: ITerminals = {
-        cmd: undefined,
+        powershell: undefined,
         bash: undefined,
         osxTerminal: undefined
     };
 
-    constructor(
-        private name: string
-    ) { }
+    constructor(private name: string) { }
 
-    private _env: IEnvVariable = {outputChannel: {...process.env}, terminal: {}};
+    private _env: IEnvVariable = { outputChannel: { ...process.env }, terminal: {} };
     get env(): IEnvVariable {
         return LibStatic.copyJsonData(this._env);
     }
@@ -26,7 +25,7 @@ export class ConsoleExtend {
         this._env.terminal = LibStatic.jsonConcat(this.env.terminal, value.terminal);
     }
     deleteEnv(key?: string) {
-        let data: IEnvVariable = {outputChannel: {}, terminal: {}};
+        let data: IEnvVariable = { outputChannel: {}, terminal: {} };
         if (key) {
             for (let keyData in this.env.outputChannel) {
                 if (key !== keyData) {
@@ -44,7 +43,7 @@ export class ConsoleExtend {
     get separatorEnv(): string {
         switch (LibStatic.getPlatform()) {
             case PlatformTypeEnum.linux:
-                return  ':';
+                return ':';
             case PlatformTypeEnum.windows:
                 return ';';
             case PlatformTypeEnum.osx:
@@ -54,34 +53,20 @@ export class ConsoleExtend {
         }
     }
 
-    private bash(command?: string): IShellCmd {
-        command = command ? command : '';
+    private bash(): IShellCmd {
         let data: IShellCmd = {
             name: this.name + ' - Bash',
             command: '',
-            type: ShellTypeEnum.bash,
-            external: '',
-            externalArgs: ''
+            type: ShellTypeEnum.bash
         };
         if (LibStatic.getPlatform() === PlatformTypeEnum.linux) {
             data.command = 'bash';
-            data.external = 'gnome-terminal';
-            data.external = `--working-directory="${this.cwdKey}"`;
-
-            if (command.length > 0) {
-                data.externalArgs += ` -x ${data.command} -c "${command}"`;
-            }
         } else if (LibStatic.getPlatform() === PlatformTypeEnum.windows) {
             const gitPath = LibStatic.resolvePath<string>(`${LibStatic.readEnvVariable('PROGRAMFILES')}/Git`);
             if (LibStatic.fileExist(gitPath, true)) {
                 data.command = LibStatic.resolvePath<string>(`${gitPath}/bin/bash.exe`);
-                const commandGit = `"${data.command}" --cd="${this.cwdKey}" --login`;
-                let cmdData = this.cmd(commandGit);
-                data.external = cmdData.external;
-                data.externalArgs = cmdData.externalArgs;
-                if (command.length > 0) {
-                    data.externalArgs = `${data.externalArgs} -i -l -c "${command}; exec bash"`;
-                }
+            } else {
+                LibStatic.notify("Not find git bash", NotifyEnum.error);
             }
         } else {
             LibStatic.notify("Invalid Platform", NotifyEnum.error);
@@ -89,65 +74,161 @@ export class ConsoleExtend {
         return LibStatic.copyJsonData(data);
     }
 
-    private cmd(command?: string): IShellCmd {
-        command = command ? command : '';
-        let data: IShellCmd = {
-            name: this.name + ' - CMD',
-            command: 'cmd.exe',
-            type: ShellTypeEnum.cmd,
-            external: 'cmd',
-            externalArgs: `/K start "" /d "${this.cwdKey}" ${command}`
-        };
-        return LibStatic.copyJsonData(data);
-    }
-
-    private powershell(command?: string): IShellCmd {
-        command = command ? command : '';
+    private powershell(): IShellCmd {
         let data: IShellCmd = {
             name: this.name + ' - Poweshell',
             command: 'powershell.exe',
-            type: ShellTypeEnum.powershell,
-            external: '',
-            externalArgs: `${command}`
+            type: ShellTypeEnum.powershell
         };
         return LibStatic.copyJsonData(data);
     }
 
-    private osxTerminal(command?: string): IShellCmd {
-        command = command ? command : '';
+    private osxTerminal(): IShellCmd {
         let data: IShellCmd = {
             name: this.name + ' - OSX Terminal',
             command: '/Applications/Utilities/Terminal.app',
-            type: ShellTypeEnum.osxTerminal,
-            external: 'open',
-            externalArgs: ''
+            type: ShellTypeEnum.osxTerminal
         };
-        data.externalArgs = `-n -a ${data.command} "${this.cwdKey}" ${command}`;
         return LibStatic.copyJsonData(data);
     }
 
-    getShell(type: ShellTypeEnum, command?: string): IShellCmd {
+    getShell(type: ShellTypeEnum): IShellCmd {
         switch (type) {
             case ShellTypeEnum.system:
                 if (LibStatic.getPlatform() === PlatformTypeEnum.linux) {
-                    return this.getShell(ShellTypeEnum.bash, command);
+                    return this.getShell(ShellTypeEnum.bash);
                 } else if (LibStatic.getPlatform() === PlatformTypeEnum.osx) {
-                    return this.getShell(ShellTypeEnum.osxTerminal, command);
+                    return this.getShell(ShellTypeEnum.osxTerminal);
                 } else if (LibStatic.getPlatform() === PlatformTypeEnum.windows) {
-                    return this.getShell(ShellTypeEnum.cmd, command);
+                    return this.getShell(ShellTypeEnum.powershell);
                 } else {
                     throw new Error("Invalid Platform");
                 }
             case ShellTypeEnum.bash:
-                return this.bash(command);
-            case ShellTypeEnum.cmd:
-                return this.cmd(command);
-            case ShellTypeEnum.osxTerminal:
-                return this.osxTerminal(command);
+                return this.bash();
             case ShellTypeEnum.powershell:
-                return this.powershell(command);
+                return this.powershell();
+            case ShellTypeEnum.osxTerminal:
+                return this.osxTerminal();
+            case ShellTypeEnum.powershell:
+                return this.powershell();
             default:
                 throw new Error("Invalid Shell type");
+        }
+    }
+
+    /**============================================
+     *! Terminal
+     *=============================================**/
+    private _terminal: Terminal | undefined;
+    get terminal(): Terminal {
+        if (!this._terminal) {
+            this.setTerminal(ShellTypeEnum.system);
+        }
+        return this._terminal as Terminal;
+    }
+
+    private changeDir(cwd?: string) {
+        if (cwd && cwd.length > 0 && this._terminal) {
+            const changeDirectory = `cd "${cwd}"`;
+            this.terminal.sendText(changeDirectory);
+        }
+    }
+
+    private setTerminal(shellType: ShellTypeEnum, cwd?: string) {
+        let shell: IShellCmd | undefined;
+        if (shellType === ShellTypeEnum.bash) {
+            shell = this.getShell(shellType);
+        } else if (shellType === ShellTypeEnum.powershell) {
+            shell = this.getShell(shellType);
+        } else if (shellType === ShellTypeEnum.osxTerminal) {
+            shell = this.getShell(shellType);
+        } else {
+            shell = this.getShell(ShellTypeEnum.system);
+        }
+
+        if (shell) {
+            switch (shell.type) {
+                case ShellTypeEnum.bash:
+                    if (!this.terminals.bash) {
+                        this.terminals.bash = window.createTerminal({
+                            cwd: cwd,
+                            name: shell.name,
+                            shellPath: shell.command,
+                            env: this.env.terminal
+                        });
+                    }
+                    this._terminal = this.terminals.bash;
+                    break;
+                case ShellTypeEnum.powershell:
+                    if (!this.terminals.powershell) {
+                        this.terminals.powershell = window.createTerminal({
+                            cwd: cwd,
+                            name: shell.name,
+                            shellPath: shell.command,
+                            env: this.env.terminal
+                        });
+                    }
+                    this._terminal = this.terminals.powershell;
+                    break;
+                case ShellTypeEnum.osxTerminal:
+                    if (!this.terminals.osxTerminal) {
+                        this.terminals.osxTerminal = window.createTerminal({
+                            cwd: cwd,
+                            name: shell.name,
+                            shellPath: shell.command,
+                            env: this.env.terminal
+                        });
+                    }
+                    this._terminal = this.terminals.osxTerminal;
+                    break;
+                default:
+                    throw new Error("Invalid Shell");
+            }
+
+            window.onDidCloseTerminal(term => {
+                if (term.name === this.terminals.bash?.name) {
+                    this.terminals.bash = undefined;
+                } else if (term.name === this.terminals.powershell?.name) {
+                    this.terminals.powershell = undefined;
+                } else if (term.name === this.terminals.osxTerminal?.name) {
+                    this.terminals.osxTerminal = undefined;
+                }
+                this._terminal = undefined;
+            });
+        }
+    }
+
+    execTerminal(command: string, cwd?: string, shellType?: ShellTypeEnum) {
+        if (command && command.length > 0) {
+            if (!this.terminal || shellType) {
+                shellType = shellType ? shellType : ShellTypeEnum.system;
+                this.setTerminal(shellType, cwd);
+            }
+            this.changeDir(cwd);
+            this.terminal.show(true);
+            this.terminal.sendText(command);
+
+        }
+    }
+
+    createTerminal(options: TerminalOptions): Terminal {
+        options['name'] = this.name + ': ' + options?.name;
+        options['shellPath'] = !options.shellPath
+            ? this.getShell(ShellTypeEnum.system).command
+            : options.shellPath;
+        options['env'] = !options.env ? this.env.terminal : options.env;
+
+        let term = window.terminals.find(t => t.name === options?.name);
+        if (term) {
+            return term;
+        }
+        return window.createTerminal(options);
+    }
+
+    async closeTerminal(processId: number) {
+        if (this._terminal) {
+            await LibStatic.runVscodeCommand('workbench.action.terminal.kill', processId);
         }
     }
 
@@ -162,7 +243,7 @@ export class ConsoleExtend {
         return this._outputChannel;
     }
 
-    execOutputChannel(command: string, options?: SpawnOptionsWithoutStdio & {isWait?: boolean, printCmd?: boolean}, callback?: (output?: any, error?: Error, end?: any) => void): SpawnSyncReturns<Buffer> | undefined {
+    execOutputChannel(command: string, options?: SpawnOptionsWithoutStdio & { isWait?: boolean, printCmd?: boolean }, callback?: (output?: any, error?: Error, end?: any) => void): SpawnSyncReturns<Buffer> | undefined {
         let processResult = (data?: any, error?: any, end?: any) => {
             if (data) {
                 data = data.toString();
@@ -204,7 +285,7 @@ export class ConsoleExtend {
         cmd.stdout.on('data', result => {
             processResult(result);
         });
-        
+
 
         // Error
         cmd.on('error', error => {
@@ -268,153 +349,11 @@ export class ConsoleExtend {
     /*=============== END OF SECTION ==============*/
 
     /**============================================
-     *! Terminal
-     *=============================================**/
-    private _terminal: Terminal | undefined;
-    terminal(cwd?: string, shell?: ShellTypeEnum): Terminal {
-        if (!this._terminal) {
-            shell = shell ? shell : ShellTypeEnum.system;
-            this.setTerminal(shell, cwd);
-        }
-        return this._terminal as Terminal;
-    }
-
-    private changeDir(cwd?: string) {
-        if (this._terminal && cwd && cwd.length > 0) {
-            this.terminal().sendText(`cd "${cwd}"`);
-        }
-    }
-
-    private setTerminal(shellType: ShellTypeEnum, cwd?: string) {
-        let shell: IShellCmd | undefined;
-        if (shellType === ShellTypeEnum.bash) {
-            shell = this.getShell(shellType);
-        } else if (shellType === ShellTypeEnum.cmd) {
-            shell = this.getShell(shellType);
-        } else if (shellType === ShellTypeEnum.osxTerminal) {
-            shell = this.getShell(shellType);
-        } else {
-            shell = this.getShell(ShellTypeEnum.system);
-        }
-
-        if (shell) {
-            switch (shell.type) {
-                case ShellTypeEnum.bash:
-                    if (!this.terminals.bash) {
-                        this.terminals.bash = window.createTerminal({
-                            cwd: cwd,
-                            name: shell.name,
-                            shellPath: shell.command,
-                            env: this.env.terminal
-                        });
-                    }
-                    this._terminal = this.terminals.bash;
-                    break;
-                case ShellTypeEnum.cmd:
-                    if (!this.terminals.cmd) {
-                        this.terminals.cmd = window.createTerminal({
-                            cwd: cwd,
-                            name: shell.name,
-                            shellPath: shell.command,
-                            env: this.env.terminal
-                        });
-                    }
-                    this._terminal = this.terminals.cmd;
-                    break;
-                case ShellTypeEnum.osxTerminal:
-                    if (!this.terminals.osxTerminal) {
-                        this.terminals.osxTerminal = window.createTerminal({
-                            cwd: cwd,
-                            name: shell.name,
-                            shellPath: shell.command,
-                            env: this.env.terminal
-                        });
-                    }
-                    this._terminal = this.terminals.osxTerminal;
-                    break;
-                default:
-                    throw new Error("Invalid Shell");
-            }
-
-            window.onDidCloseTerminal(term => {
-                if (term.name === this.terminals.bash?.name) {
-                    this.terminals.bash = undefined;
-                } else if (term.name === this.terminals.cmd?.name) {
-                    this.terminals.cmd = undefined;
-                } else if (term.name === this.terminals.osxTerminal?.name) {
-                    this.terminals.osxTerminal = undefined;
-                }
-                this._terminal = undefined;
-            });
-        }
-    }
-
-    execTerminal(command: string,  cwd?: string, shellType?: ShellTypeEnum) {
-        if (command && command.length > 0) {
-            if (shellType) {
-                this.setTerminal(shellType, cwd);
-            }
-            this.changeDir(cwd);
-            this.terminal().show(true);
-            this.terminal().sendText(command);
-        }
-    }
-
-    createTerminal(options: TerminalOptions): Terminal {
-        options['name'] = this.name + ': ' + options?.name;
-        options['shellPath'] = !options.shellPath
-            ? this.getShell(ShellTypeEnum.system).command
-            : options.shellPath;
-        options['env'] = !options.env ? this.env.terminal : options.env;
-        
-        let term = window.terminals.find(t => t.name === options?.name);
-        if (term) {
-            return term;
-        }
-        return window.createTerminal(options);
-    }
-
-    async closeTerminal(processId: number) {
-        if (this._terminal) {
-            await LibStatic.runVscodeCommand('workbench.action.terminal.kill', processId);
-        }
-    }
-
-    /**============================================
-     *! External
-     *=============================================**/
-    execExternal(shell: ShellTypeEnum, cwd: string, command?: string) {
-        if (LibStatic.fileExist(cwd, true)) {
-            let typeShellData = this.getShell(shell, command);
-            let base: string = typeShellData.external;
-            let args: string = LibStatic.stringReplaceAll(typeShellData.externalArgs, [
-                { search: this.cwdKey, toReplace: cwd }
-            ]);
-
-            if (base && base.length > 0) {
-                base += ' ' + args;
-                let consoleProcess = exec(base, {env: this.env.outputChannel});
-                consoleProcess.on('error', error => {
-                    this.onOutputChannel(error);
-                });
-                consoleProcess.on('uncaughtException', error => {
-                    this.onOutputChannel(error);
-                });
-                consoleProcess.on('exit', (code) => {
-                    this.onOutputChannel('External Terminal EXIT CODE: ' + code);
-                });
-            }
-        } else {
-            this.onOutputChannel('External Terminal: Invalid Path = ' + cwd);
-        }
-    }
-
-    /**============================================
      *! Others
      *=============================================**/
     runCommandPowerShellAsAdmin(command: string, cwd?: string) {
         let adminCmd = `Start-Process powershell -verb runas -ArgumentList "${command}"`;
-        this.execOutputChannel(adminCmd, {cwd: cwd}, (output, error, isEnd) => {
+        this.execOutputChannel(adminCmd, { cwd: cwd }, (output, error, isEnd) => {
             if (isEnd) {
                 LibStatic.notify("Please Restart VSCode");
             }
@@ -429,12 +368,12 @@ export class ConsoleExtend {
                     execCmd = `which ${command}`;
                     break;
                 case PlatformTypeEnum.windows:
-                    execCmd = `where ${command}`;
+                    execCmd = `where.exe ${command}`;
                     break;
                 default:
                     return '';
             }
-            let result = this.execOutputChannel(execCmd, {isWait: true, shell: this.getShell(ShellTypeEnum.system).command});
+            let result = this.execOutputChannel(execCmd, { isWait: true, shell: this.getShell(ShellTypeEnum.system).command });
             if (result?.stdout) {
                 return result.stdout?.toString().trim();
             }
@@ -467,7 +406,7 @@ export class ConsoleExtend {
             }
         } else {
             switch (shellType) {
-                case ShellTypeEnum.cmd | ShellTypeEnum.powershell:
+                case ShellTypeEnum.powershell:
                     separatorCmd = separators.win;
                     break;
                 case ShellTypeEnum.bash:
@@ -477,7 +416,7 @@ export class ConsoleExtend {
                     separatorCmd = separators.osx;
                     break;
                 default:
-                    throw new Error("Ivalid Shell");  
+                    throw new Error("Ivalid Shell");
             }
         }
 

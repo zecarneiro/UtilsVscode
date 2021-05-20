@@ -52,6 +52,9 @@ export interface IRunCmd {
     cmd: string,
     cwd?: string
 }
+export interface IJsonWriteFile {
+
+}
 export class IExtensionInfo {
     author: string = '';
     publisher: string = '';
