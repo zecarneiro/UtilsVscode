@@ -9,3 +9,8 @@ export interface IJavaExtend {
     otherArgs?: string[],
     runCmdBeforeTest?: IRunCmd[],
 }
+
+export interface IJavaVmExtend {
+    jarFile: string,
+    vmOptions?: string[]
+}

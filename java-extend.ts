@@ -1,4 +1,4 @@
-import { IJavaExtend } from './interface/java-extend-inteface';
+import { IJavaExtend, IJavaVmExtend } from './interface/java-extend-inteface';
 import { QuickPickItem } from 'vscode';
 import { ConsoleExtend } from "./console-extend";
 import { ShellTypeEnum } from "./enum/console-extends-enum";
@@ -7,6 +7,7 @@ import { LibStatic } from "./lib-static";
 export class JavaExtend {
     private readonly mvnCmd = 'mvn';
     private readonly pomFile = 'pom.xml';
+    private readonly javaExec = 'java';
     constructor(
         private consoleExtend: ConsoleExtend
     ) {
@@ -68,5 +69,18 @@ export class JavaExtend {
             });
         }
         this.consoleExtend.execTerminal(`${command} test`, data.pomDir, shellType);
+    }
+
+    runVm(data: IJavaVmExtend, shellType: ShellTypeEnum) {
+        if (LibStatic.fileExist(data.jarFile, false)) {
+            let cmd: string = this.javaExec;
+            if (data.vmOptions) {
+                data.vmOptions.forEach(option => {
+                    cmd += ` ${option}`;
+                });
+            }
+            cmd += ` -jar '${data.jarFile}'`;
+            this.consoleExtend.execTerminal(cmd, undefined, shellType);
+        }
     }
 }
