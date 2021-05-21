@@ -135,7 +135,7 @@ export class ConsoleExtend {
         }
     }
 
-    private setTerminal(shellType: ShellTypeEnum, cwd?: string) {
+    private setTerminal(shellType?: ShellTypeEnum, cwd?: string) {
         let shell: IShellCmd | undefined;
         if (shellType === ShellTypeEnum.bash) {
             shell = this.getShell(shellType);
@@ -199,10 +199,38 @@ export class ConsoleExtend {
         }
     }
 
+    openTerminal(shellType: ShellTypeEnum, cwd?: string) {
+        switch (shellType) {
+            case ShellTypeEnum.bash:
+                if (!this.terminals.bash) {
+                    this.setTerminal(shellType, cwd);
+                }
+                this.terminals.bash?.show();
+                break;
+            case ShellTypeEnum.powershell:
+                if (!this.terminals.powershell) {
+                    this.setTerminal(shellType, cwd);
+                }
+                this.terminals.powershell?.show();
+                break;
+            case ShellTypeEnum.osxTerminal:
+                if (!this.terminals.osxTerminal) {
+                    this.setTerminal(shellType, cwd);
+                }
+                this.terminals.osxTerminal?.show();
+                break;
+            case ShellTypeEnum.system:
+                this.setTerminal(shellType, cwd);
+                this.openTerminal(this.getShell(ShellTypeEnum.system).type);
+                break;
+            default:
+                break;
+        }
+    }
+
     execTerminal(command: string, cwd?: string, shellType?: ShellTypeEnum) {
         if (command && command.length > 0) {
             if (!this.terminal || shellType) {
-                shellType = shellType ? shellType : ShellTypeEnum.system;
                 this.setTerminal(shellType, cwd);
             }
             this.changeDir(cwd);
@@ -214,6 +242,11 @@ export class ConsoleExtend {
 
     createTerminal(options: TerminalOptions): Terminal {
         options['name'] = this.name + ': ' + options?.name;
+        window.terminals.forEach(terminalActive => {
+            if (terminalActive.name === options.name) {
+                return terminalActive;
+            }
+        });
         options['shellPath'] = !options.shellPath
             ? this.getShell(ShellTypeEnum.system).command
             : options.shellPath;
